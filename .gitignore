@@ -1,0 +1,6 @@
+*.db
+*.coffee
+data/users/*/
+merged-*/
+js/all.js
+js/lib/all.js
