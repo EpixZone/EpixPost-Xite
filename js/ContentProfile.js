@@ -96,7 +96,7 @@
 
     findUser(user_name, cb) {
       var query;
-      query = "SELECT\n json.cert_user_id,\n REPLACE(REPLACE(json.directory, 'data/userdb/', ''), 'data/users/', '') AS auth_address,\n CASE WHEN user.hub IS NOT NULL THEN user.hub ELSE json.site END AS hub,\n user.*\nFROM\n json\nLEFT JOIN user USING (json_id)\nWHERE user.user_name = :user_name OR json.user_name = :user_name\nORDER BY date_added DESC LIMIT 1";
+      query = "SELECT\n json.cert_user_id,\n REPLACE(REPLACE(json.directory, 'data/userdb/', ''), 'data/users/', '') AS auth_address,\n COALESCE(json.hub, json.site) AS hub,\n json.user_name,\n json.avatar,\n json.intro\nFROM\n json\nWHERE json.user_name = :user_name AND json.directory LIKE 'data/users/%'\nORDER BY json.json_id DESC LIMIT 1";
       return Page.cmd("dbQuery", [
         query, {
           user_name: user_name

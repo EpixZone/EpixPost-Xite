@@ -73,7 +73,7 @@
         Page.on_loaded.resolve();
       }
       if (this.need_update || !this.num_users_total) {
-        Page.cmd("dbQuery", "SELECT COUNT(*) AS num FROM user", (res) => {
+        Page.cmd("dbQuery", "SELECT COUNT(DISTINCT directory) AS num FROM json WHERE file_name = 'data.json' AND directory LIKE 'data/users/%'", (res) => {
           this.num_users_total = res[0]["num"];
           return Page.projector.scheduleRender();
         });

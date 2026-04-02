@@ -4,12 +4,16 @@
  "background-color": "#F2F4F6",
  "background-color-dark": "#26242E",
  "description": "Social Network",
- "epixnet_version": "0.0.2",
+ "epixnet_version": "0.0.3",
  "favicon": "favicon.ico",
  "files": {
   "LICENSE": {
    "sha512": "e67014a69caa38c58575f333619243c9ebb3c98d462f0b4823ff5ed3d2cfdba3",
    "size": 1077
+  },
+  "README.md": {
+   "sha512": "92ac513f0ec99172872a1cb3b70ba70279ae3eb4e5b88ad406f44dfdb51b22df",
+   "size": 2188
   },
   "css/all.css": {
    "sha512": "8a7651a33597e7b2e5ea8c1ff49c180861e17ec594bf01a92ba6beb77706d493",
@@ -76,16 +80,16 @@
    "size": 4450
   },
   "js/ContentProfile.js": {
-   "sha512": "a3f8307b17e1e368b526ed54593682a8415765821bff47a53f1a7e3c8156544f",
-   "size": 12672
+   "sha512": "9a780805b9b86aa91b0681506161544fd156abecd55bcad305fc0250b6e40384",
+   "size": 12653
   },
   "js/ContentUsers.js": {
-   "sha512": "7174036ae57c38064e821afb4fe5436c51854bc6a9d8ad7b6a014049c9c3942f",
-   "size": 5296
+   "sha512": "8b780f4cf8df8fb25ac029aef62f660b96e938012d9526c6a7dea1f3f68bac9c",
+   "size": 5377
   },
   "js/EpixPost.js": {
-   "sha512": "d82c2376066550600386055de3eb0320036f779b5dd3e779a47dd7c8b895cc93",
-   "size": 19375
+   "sha512": "07e39f361dcf002655c47fd7dd5ab40362b95e6c1557125ed4a1c27b3cc7a01e",
+   "size": 19407
   },
   "js/Head.js": {
    "sha512": "a0f5f556e35ac90bdcaca5f5e3ff06ce888fc895e57629f21933415576a337ee",
@@ -104,8 +108,8 @@
    "size": 6196
   },
   "js/PostMeta.js": {
-   "sha512": "6ddc00b89e989a6dae4280240b71f62251f857b718f402327ef46e68197fbe7f",
-   "size": 6184
+   "sha512": "297bdcb97984fa2494c72a43b8460a87be4a9b34be915a4785ceacc1c1ed9116",
+   "size": 6188
   },
   "js/Trigger.js": {
    "sha512": "43a3f895d6d0bc8ab72296759e4249c86d43a14a113d2bd33b525fce4f59b864",
@@ -116,8 +120,8 @@
    "size": 17831
   },
   "js/UserList.js": {
-   "sha512": "7fd008f9dd84b93a763196683e499d30279add1f1ac9f883b753e95b1c7d9461",
-   "size": 5477
+   "sha512": "4b990ee78ea23722209592e0053689c42ad2e4b40a0142e3ffbe40927dd59d54",
+   "size": 5423
   },
   "js/lib/anime.min.js": {
    "sha512": "6efe3acb31bd1c46798e83d830a05c27db5d0cae46a333c69decd9a6a4b87c9e",
@@ -262,7 +266,7 @@
  },
  "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|.*\\.coffee|js/all\\.js|\\.git)",
  "inner_path": "content.json",
- "modified": 1773632930,
+ "modified": 1775060163,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -273,7 +277,7 @@
   }
  },
  "signers_sign": "HL3T+I7ncGYH/A5YXm0iKd6JHRWGrCDu+u0/z+n/R9XEB/Oo8Lz9oxN3nG5L0OJ7XMZFs1OmuSsvhTW7YlL/ODY=",
- "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "GzS2qE6B0pLVApkstCVuqSy5HsSwPLNT9a1rVNAaybuWVjJJO3YE5ECT8m9yk/8u0etzHRw7HSCtT9Q8bBsaJPc="},
+ "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HOiMmeMseoviP6sCOXfEfE1eNFZPWo+RM5x1tNjuoK0wPMtHYtpfBMEcR4/P8YxhIqrdg38gfRAoRlCKRKMqvPs="},
  "signs_required": 1,
  "title": "Epix Post",
  "translate": ["js/EpixPost.js","js/Head.js","js/User.js","js/Post.js","js/PostCreate.js","js/PostList.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentCreateProfile.js","js/ContentUsers.js","js/ActivityList.js","js/UserList.js","js/utils/Text.js","js/utils/Translate.js"],

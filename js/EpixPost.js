@@ -357,7 +357,7 @@
           this.log("Choosen site for user", user_row.site, user_row);
           this.user = new User({
             hub: user_row.hub,
-            auth_address: this.site_info.auth_address
+            auth_address: this.site_info.xid_directory || this.site_info.auth_address
           });
           this.user.row = user_row;
           this.resolveXidProfiles([this.site_info.auth_address], () => {

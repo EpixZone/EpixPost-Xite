@@ -120,8 +120,8 @@
         },
           h("a.fullsize", { href: "#", onclick: this.handleImageClick, style: style_fullsize }),
           Page.server_info.rev < 1700 ? h("small.oldversion", "You need EpixNet 0.5.0 to view this image") : void 0,
-          (ref5 = this.image_preview) != null ? ref5.optional_info : void 0 ? h("a.show", { href: "#", onclick: this.handleImageClick }, h("div.title", "Loading...\nShow image")) : void 0,
-          (ref6 = this.image_preview) != null ? ref6.optional_info : void 0 ? h("a.details", {
+          ((ref5 = this.image_preview) != null ? ref5.optional_info : void 0) ? h("a.show", { href: "#", onclick: this.handleImageClick }, h("div.title", "Loading...\nShow image")) : void 0,
+          ((ref6 = this.image_preview) != null ? ref6.optional_info : void 0) ? h("a.details", {
             href: "#Settings", onclick: Page.returnFalse, onmousedown: this.handleImageSettingsClick
           }, [
             h("div.size", Text.formatSize((ref7 = this.image_preview.optional_info) != null ? ref7.size : void 0)),

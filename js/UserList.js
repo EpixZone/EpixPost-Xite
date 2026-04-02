@@ -17,13 +17,13 @@
       this.loading = true;
       params = {};
       if (this.search) {
-        search_where = "AND (json.user_name LIKE :search_like OR user.user_name LIKE :search_like OR json.cert_user_id LIKE :search_like)";
+        search_where = "AND (json.user_name LIKE :search_like OR json.cert_user_id LIKE :search_like)";
         params["search_like"] = "%" + this.search + "%";
       } else {
         search_where = "";
       }
       if (this.followed_by) {
-        query = "SELECT user.user_name, follow.*, user.*\nFROM follow\nLEFT JOIN user USING (auth_address, hub)\nWHERE\n follow.json_id = " + this.followed_by.row.json_id + "  AND user.json_id IS NOT NULL\n\nUNION\n\nSELECT user.user_name, follow.*, user.*\nFROM follow\nLEFT JOIN json ON (json.directory = 'data/userdb/' || follow.auth_address)\nLEFT JOIN user ON (user.json_id = json.json_id)\nWHERE\n follow.json_id = " + this.followed_by.row.json_id + "  AND user.json_id IS NOT NULL AND\n follow.date_added < " + (Time.timestamp() + 120) + "\nORDER BY date_added DESC\nLIMIT " + this.limit;
+        query = "SELECT json.user_name, follow.*, json.cert_user_id AS json_cert_user_id, json.directory AS json_directory, json.site AS json_site, json.hub AS json_hub, json.avatar AS json_avatar\nFROM follow\nLEFT JOIN json ON (json.directory = 'data/users/' || follow.auth_address AND json.file_name = 'data.json')\nWHERE\n follow.json_id = " + this.followed_by.row.json_id + " AND json.json_id IS NOT NULL AND\n follow.date_added < " + (Time.timestamp() + 120) + "\nORDER BY date_added DESC\nLIMIT " + this.limit;
       } else if (this.type === "suggested") {
         var followed_user_addresses = Object.keys(Page.user.followed_users).map(function(key) {
           return key.replace(/.*\//, "");
@@ -38,7 +38,7 @@
       } else if (this.type === "active") {
         query = "SELECT\n json.*,\n json.site AS json_site,\n json.directory AS json_directory,\n json.file_name AS json_file_name,\n json.cert_user_id AS json_cert_user_id,\n json.hub AS json_hub,\n json.user_name AS json_user_name,\n json.avatar AS json_avatar,\n COUNT(*) AS posts\nFROM\n post LEFT JOIN json USING (json_id)\nWHERE\n post.date_added > " + (Time.timestamp() - 60 * 60 * 24 * 7) + "\nGROUP BY json_id\nORDER BY posts DESC\nLIMIT " + this.limit;
       } else {
-        query = "SELECT\n user.*,\n json.site AS json_site,\n json.directory AS json_directory,\n json.file_name AS json_file_name,\n json.cert_user_id AS json_cert_user_id,\n json.hub AS json_hub,\n json.user_name AS json_user_name,\n json.avatar AS json_avatar\nFROM\n user LEFT JOIN json USING (json_id)\nWHERE\n date_added < " + (Time.timestamp() + 120) + "\n " + search_where + "\nORDER BY date_added DESC\nLIMIT " + this.limit;
+        query = "SELECT\n json.*,\n json.site AS json_site,\n json.directory AS json_directory,\n json.file_name AS json_file_name,\n json.cert_user_id AS json_cert_user_id,\n json.hub AS json_hub,\n json.user_name AS json_user_name,\n json.avatar AS json_avatar,\n (SELECT COUNT(*) FROM post WHERE post.json_id = json.json_id) AS posts\nFROM\n json\nWHERE\n json.file_name = 'data.json' AND json.directory LIKE 'data/users/%'\n " + search_where + "\nORDER BY posts DESC\nLIMIT " + this.limit;
       }
       return Page.cmd("dbQuery", [query, params], (rows) => {
         var all_addresses, followed_by_displayed, key, row, rows_by_user, user_rows, val;
