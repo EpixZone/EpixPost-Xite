@@ -1,0 +1,81 @@
+{
+	"Visitor": "방문자",
+	"Select your account": "계정을 선택하세요",
+	"You need a profile for this feature": "이 기능을 사용하려면 프로필이 필요합니다",
+
+	"Follow username mentions": "사용자 언급 알림 받기",
+	"Follow comments on your posts": "내 게시물의 댓글 알림 받기",
+	"Follow new followers": "새 팔로워 알림 받기",
+
+	"Follow": "팔로우",
+	"Unfollow": "언팔로우",
+	"Help distribute this user's images": "이 사용자의 이미지를 배포하는 데 도움주기",
+	"Following": "팔로잉",
+	"Activity feed": "활동 피드",
+	"Show more...": "더 보기...",
+
+	" started following ": " 님을 팔로우하기 시작했습니다 ",
+	" commented on ": " 에 댓글을 남겼습니다 ",
+	" liked ": " 님이 좋아합니다 ",
+	"'s ": "의 ",
+	"_(post, like post)": "게시물",
+	"_(post, comment post)": "댓글",
+
+	"Cancel": "취소",
+	"Save": "저장",
+	"Delete": "삭제",
+
+	"User's profile site not loaded to your client yet.": "사용자의 프로필 페이지가 아직 완전히 로드되지 않았습니다.",
+	"Download user's site": "사용자 사이트 다운로드",
+
+	"Browse all \\u203A": "모두 보기",
+	"New users": "새 사용자",
+	"Suggested users": "추천 사용자",
+
+	"Create new profile": "새 프로필 만들기",
+	"Creating new profile...": "새 프로필 생성 중...",
+	"Checking user on selected hub...": "선택한 허브에서 사용자 확인 중...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "사용자 \" + Page.site_info.cert_user_id + \" 는 이미 이 허브에 존재합니다",
+	"Select ID...": "ID 선택...",
+	"Seeded HUBs": "공유 HUB",
+	"Available HUBs": "사용 가능한 HUB",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(여기서 프로필이 저장될 위치를 선택합니다. 콘텐츠 차이는 없으며 어떤 허브에서도 모든 사용자에게 접근할 수 있습니다)",
+
+	"Random EpixNet user": "랜덤 EpixNet 사용자",
+	"Hello Epix Post!": "안녕하세요 Epix Post!",
+
+	"Loading...\\nShow image": "로딩 중...\\n이미지 보기",
+	"Help distribute this user's new images": "이 사용자의 새 이미지를 배포하는 데 도움주기",
+	"Delete image": "이미지 삭제",
+	"Show image": "이미지 보기",
+	"'s new images": "의 새 이미지",
+
+	"Comment": "댓글",
+	"Add your comment": "댓글 추가",
+	"Reply": "답글",
+
+	"Everyone": "모두",
+	"Followed users": "팔로우한 사용자",
+	"Show more posts...": "게시물 더 보기...",
+	"Show more comments...": "댓글 더 보기...",
+	"No posts yet": "아직 게시물이 없습니다",
+	"Let's follow some users!": "사용자를 팔로우해보세요!",
+
+	"Select user to post new content": "새 콘텐츠를 게시할 사용자를 선택하세요",
+	"Write something...": "무언가 작성하세요...",
+	"Submit new post": "새 게시물 등록",
+	"Invalid image, only jpg format supported": "잘못된 이미지입니다. JPG 형식만 지원됩니다",
+
+	"Follow in newsfeed": "뉴스피드에서 팔로우",
+
+	"New users in Epix Post": "Epix Post의 새 사용자",
+	"Total: ": "총합: ",
+	" registered users": " 등록 사용자",
+
+	" minutes ago": " 분 전",
+	" hours ago": " 시간 전",
+	" days ago": " 일 전",
+	"on ": "",
+	"Just now": "방금 전"
+}

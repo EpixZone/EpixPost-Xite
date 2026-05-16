@@ -1,0 +1,81 @@
+{
+	"Visitor": "ゲスト",
+	"Select your account": "アカウントを選択",
+	"You need a profile for this feature": "この機能にはプロフィールが必要です",
+
+	"Follow username mentions": "ユーザー名のメンションをフォロー",
+	"Follow comments on your posts": "投稿へのコメントをフォロー",
+	"Follow new followers": "新しいフォロワーをフォロー",
+
+	"Follow": "フォロー",
+	"Unfollow": "フォロー解除",
+	"Help distribute this user's images": "このユーザーの画像配信を支援する",
+	"Following": "フォロー中",
+	"Activity feed": "アクティビティ",
+	"Show more...": "もっと見る...",
+
+	" started following ": " がフォローを開始しました ",
+	" commented on ": " にコメントしました ",
+	" liked ": " が「いいね」しました ",
+	"'s ": "の",
+	"_(post, like post)": "投稿",
+	"_(post, comment post)": "コメント",
+
+	"Cancel": "キャンセル",
+	"Save": "保存",
+	"Delete": "削除",
+
+	"User's profile site not loaded to your client yet.": "ユーザーのプロフィールページはまだ完全に読み込まれていません。",
+	"Download user's site": "ユーザーのページをダウンロード",
+
+	"Browse all \\u203A": "すべて表示",
+	"New users": "新しいユーザー",
+	"Suggested users": "おすすめユーザー",
+
+	"Create new profile": "新しいプロフィールを作成",
+	"Creating new profile...": "新しいプロフィールを作成中...",
+	"Checking user on selected hub...": "選択したハブ上のユーザーを確認中...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "ユーザー \" + Page.site_info.cert_user_id + \" は既にこのハブに存在します",
+	"Select ID...": "IDを選択...",
+	"Seeded HUBs": "共有HUB",
+	"Available HUBs": "利用可能なHUB",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(ここでプロフィールを保存する場所を選択します。コンテンツに違いはなく、どのハブからでもすべてのユーザーにアクセスできます)",
+
+	"Random EpixNet user": "ランダムなEpixNetユーザー",
+	"Hello Epix Post!": "こんにちは Epix Post！",
+
+	"Loading...\\nShow image": "読み込み中...\\n画像を表示",
+	"Help distribute this user's new images": "このユーザーの新しい画像配信を支援する",
+	"Delete image": "画像を削除",
+	"Show image": "画像を表示",
+	"'s new images": "の新しい画像",
+
+	"Comment": "コメント",
+	"Add your comment": "コメントを追加",
+	"Reply": "返信",
+
+	"Everyone": "全員",
+	"Followed users": "フォロー中のユーザー",
+	"Show more posts...": "さらに投稿を表示...",
+	"Show more comments...": "さらにコメントを表示...",
+	"No posts yet": "まだ投稿はありません",
+	"Let's follow some users!": "ユーザーをフォローしてみましょう！",
+
+	"Select user to post new content": "新しいコンテンツを投稿するユーザーを選択",
+	"Write something...": "何かを書いてください...",
+	"Submit new post": "新しい投稿を送信",
+	"Invalid image, only jpg format supported": "無効な画像です。jpg形式のみ対応しています",
+
+	"Follow in newsfeed": "ニュースフィードでフォロー",
+
+	"New users in Epix Post": "Epix Post の新しいユーザー",
+	"Total: ": "合計: ",
+	" registered users": " 登録ユーザー",
+
+	" minutes ago": " 分前",
+	" hours ago": " 時間前",
+	" days ago": " 日前",
+	"on ": "",
+	"Just now": "たった今"
+}

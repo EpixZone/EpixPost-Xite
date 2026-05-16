@@ -1,0 +1,81 @@
+{
+	"Visitor": "Гость",
+	"Select your account": "Выберите аккаунт",
+	"You need a profile for this feature": "Для этой функции необходим профиль",
+
+	"Follow username mentions": "Следить за упоминаниями пользователя",
+	"Follow comments on your posts": "Следить за комментариями к вашим публикациям",
+	"Follow new followers": "Следить за новыми подписчиками",
+
+	"Follow": "Подписаться",
+	"Unfollow": "Отписаться",
+	"Help distribute this user's images": "Помочь распространять изображения этого пользователя",
+	"Following": "Подписки",
+	"Activity feed": "Лента активности",
+	"Show more...": "Показать больше...",
+
+	" started following ": " начал(а) подписываться на ",
+	" commented on ": " прокомментировал(а) ",
+	" liked ": " понравилось ",
+	"'s ": " ",
+	"_(post, like post)": "публикация",
+	"_(post, comment post)": "комментарий",
+
+	"Cancel": "Отмена",
+	"Save": "Сохранить",
+	"Delete": "Удалить",
+
+	"User's profile site not loaded to your client yet.": "Страница профиля пользователя ещё не полностью загружена.",
+	"Download user's site": "Загрузить страницу пользователя",
+
+	"Browse all \\u203A": "Показать все",
+	"New users": "Новые пользователи",
+	"Suggested users": "Рекомендуемые пользователи",
+
+	"Create new profile": "Создать новый профиль",
+	"Creating new profile...": "Создание нового профиля...",
+	"Checking user on selected hub...": "Проверка пользователя на выбранном хабе...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "Пользователь \" + Page.site_info.cert_user_id + \" уже существует на этом хабе",
+	"Select ID...": "Выбрать ID...",
+	"Seeded HUBs": "Общие HUB'ы",
+	"Available HUBs": "Доступные HUB'ы",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(Здесь вы выбираете, где будет храниться ваш профиль. Разницы в содержимом нет, и вы сможете получить доступ ко всем пользователям с любого хаба)",
+
+	"Random EpixNet user": "Случайный пользователь EpixNet",
+	"Hello Epix Post!": "Привет, Epix Post!",
+
+	"Loading...\\nShow image": "Загрузка...\\nПоказать изображение",
+	"Help distribute this user's new images": "Помочь распространять новые изображения этого пользователя",
+	"Delete image": "Удалить изображение",
+	"Show image": "Показать изображение",
+	"'s new images": " новые изображения",
+
+	"Comment": "Комментарий",
+	"Add your comment": "Добавьте комментарий",
+	"Reply": "Ответить",
+
+	"Everyone": "Все",
+	"Followed users": "Подписки",
+	"Show more posts...": "Показать больше публикаций...",
+	"Show more comments...": "Показать больше комментариев...",
+	"No posts yet": "Пока нет публикаций",
+	"Let's follow some users!": "Давайте подпишемся на пользователей!",
+
+	"Select user to post new content": "Выберите пользователя для публикации нового контента",
+	"Write something...": "Напишите что-нибудь...",
+	"Submit new post": "Опубликовать новый пост",
+	"Invalid image, only jpg format supported": "Недопустимое изображение, поддерживается только формат JPG",
+
+	"Follow in newsfeed": "Следить в ленте новостей",
+
+	"New users in Epix Post": "Новые пользователи в Epix Post",
+	"Total: ": "Всего: ",
+	" registered users": " зарегистрированных пользователей",
+
+	" minutes ago": " минут назад",
+	" hours ago": " часов назад",
+	" days ago": " дней назад",
+	"on ": "в ",
+	"Just now": "Только что"
+}
