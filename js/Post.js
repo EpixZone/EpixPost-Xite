@@ -244,7 +244,6 @@
             }
           }), followed
         ]);
-        this.menu.items.push(["Mute user", this.user.handleMuteClick]);
         this.menu.items.push(["Permalink", this.getLink()]);
         if (this.owned) {
           this.menu.items.push([

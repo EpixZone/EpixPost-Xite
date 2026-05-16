@@ -7,7 +7,6 @@
       this.resolveMyXidName = this.resolveMyXidName.bind(this);
       this.resolveXidName = this.resolveXidName.bind(this);
       this.renderList = this.renderList.bind(this);
-      this.handleMuteClick = this.handleMuteClick.bind(this);
       this.handleDownloadClick = this.handleDownloadClick.bind(this);
       this.download = this.download.bind(this);
       this.handleFollowClick = this.handleFollowClick.bind(this);
@@ -462,15 +461,6 @@
 
     handleDownloadClick(e) {
       this.download();
-      return false;
-    }
-
-    handleMuteClick(e) {
-      if (Page.server_info.rev < 1880) {
-        Page.cmd("wrapperNotification", ["info", "You need EpixNet 0.5.2 to use this feature."]);
-        return false;
-      }
-      Page.cmd("muteAdd", [this.auth_address, this.row.cert_user_id, "Muted from [page](/" + Page.address + "/?" + Page.history_state.url + ")"]);
       return false;
     }
 

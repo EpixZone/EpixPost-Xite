@@ -226,7 +226,9 @@
       }
       if (!this.hasUserIdentity()) {
         if (this.loaded) {
-          return h("div#Content.center." + this.auth_address, [h("div.user-notfound", "User not found or muted")]);
+          return h("div#Content.center." + this.auth_address, [
+            h("div.user-notfound", "User not found")
+          ]);
         } else {
           return h("div#Content.center." + this.auth_address, []);
         }
@@ -281,20 +283,25 @@
                 })()
               ]) : void 0
             ])
-          ]), h("a.user-mute", {
-            href: "#Mute",
-            onclick: this.user.handleMuteClick
-          }, h("div.icon.icon-mute"), "Mute " + (this.user.getDisplayName())), this.activity_list.render(), this.user_list.users.length > 0 ? h("h2.sep", {
-            afterCreate: Animation.show
-          }, ["Following"]) : void 0, this.user_list.render(".gray")
-        ]), h("div.col-center", [
-          this.owned && !this.filter_post_id ? h("div.post-create-container", {
-            enterAnimation: Animation.slideDown,
-            exitAnimation: Animation.slideUp
-          }, this.post_create.render()) : void 0, this.post_list.render()
-        ])
-      ]);
-    }
+                    ]),
+                    this.activity_list.render(),
+                    this.user_list.users.length > 0
+                        ? h("h2.sep", { afterCreate: Animation.show }, ["Following"])
+                        : void 0,
+                    this.user_list.render(".gray")
+                ]),
+                h("div.col-center", [
+                    this.owned && !this.filter_post_id
+                        ? h("div.post-create-container", {
+                                enterAnimation: Animation.slideDown,
+                                exitAnimation: Animation.slideUp
+                          }, this.post_create.render())
+                        : void 0,
+                    this.post_list.render()
+                ])
+            ]);
+        }
+
 
     update() {
       if (!this.auth_address) {
