@@ -1,0 +1,81 @@
+{
+	"Visitor": "Гість",
+	"Select your account": "Виберіть свій акаунт",
+	"You need a profile for this feature": "Для цієї функції потрібен профіль",
+
+	"Follow username mentions": "Слідкувати за згадками користувача",
+	"Follow comments on your posts": "Слідкувати за коментарями до ваших публікацій",
+	"Follow new followers": "Слідкувати за новими підписниками",
+
+	"Follow": "Підписатися",
+	"Unfollow": "Відписатися",
+	"Help distribute this user's images": "Допомогти поширювати зображення цього користувача",
+	"Following": "Підписки",
+	"Activity feed": "Стрічка активності",
+	"Show more...": "Показати більше...",
+
+	" started following ": " почав(ла) підписуватися на ",
+	" commented on ": " прокоментував(ла) ",
+	" liked ": " сподобалося ",
+	"'s ": " ",
+	"_(post, like post)": "публікація",
+	"_(post, comment post)": "коментар",
+
+	"Cancel": "Скасувати",
+	"Save": "Зберегти",
+	"Delete": "Видалити",
+
+	"User's profile site not loaded to your client yet.": "Сторінка профілю користувача ще не повністю завантажена.",
+	"Download user's site": "Завантажити сторінку користувача",
+
+	"Browse all \\u203A": "Показати всі",
+	"New users": "Нові користувачі",
+	"Suggested users": "Рекомендовані користувачі",
+
+	"Create new profile": "Створити новий профіль",
+	"Creating new profile...": "Створення нового профілю...",
+	"Checking user on selected hub...": "Перевірка користувача на вибраному хабі...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "Користувач \" + Page.site_info.cert_user_id + \" вже існує на цьому хабі",
+	"Select ID...": "Вибрати ID...",
+	"Seeded HUBs": "Спільні HUB-и",
+	"Available HUBs": "Доступні HUB-и",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(Тут ви обираєте, де буде зберігатися ваш профіль. Немає різниці у вмісті, і ви зможете отримати доступ до всіх користувачів з будь-якого хаба)",
+
+	"Random EpixNet user": "Випадковий користувач EpixNet",
+	"Hello Epix Post!": "Привіт, Epix Post!",
+
+	"Loading...\\nShow image": "Завантаження...\\nПоказати зображення",
+	"Help distribute this user's new images": "Допомогти поширювати нові зображення цього користувача",
+	"Delete image": "Видалити зображення",
+	"Show image": "Показати зображення",
+	"'s new images": " нові зображення",
+
+	"Comment": "Коментар",
+	"Add your comment": "Додайте свій коментар",
+	"Reply": "Відповісти",
+
+	"Everyone": "Усі",
+	"Followed users": "Користувачі, на яких ви підписані",
+	"Show more posts...": "Показати більше публікацій...",
+	"Show more comments...": "Показати більше коментарів...",
+	"No posts yet": "Поки що немає публікацій",
+	"Let's follow some users!": "Почнімо підписуватися на користувачів!",
+
+	"Select user to post new content": "Виберіть користувача для публікації нового контенту",
+	"Write something...": "Напишіть щось...",
+	"Submit new post": "Опублікувати новий пост",
+	"Invalid image, only jpg format supported": "Недійсне зображення, підтримується лише формат JPG",
+
+	"Follow in newsfeed": "Слідкувати у стрічці новин",
+
+	"New users in Epix Post": "Нові користувачі в Epix Post",
+	"Total: ": "Усього: ",
+	" registered users": " зареєстрованих користувачів",
+
+	" minutes ago": " хвилин тому",
+	" hours ago": " годин тому",
+	" days ago": " днів тому",
+	"on ": "в ",
+	"Just now": "Щойно"
+}

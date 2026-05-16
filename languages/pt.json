@@ -1,0 +1,81 @@
+{
+	"Visitor": "Visitante",
+	"Select your account": "Selecione a sua conta",
+	"You need a profile for this feature": "Você precisa de um perfil para este recurso",
+
+	"Follow username mentions": "Seguir menções ao usuário",
+	"Follow comments on your posts": "Seguir comentários nas suas publicações",
+	"Follow new followers": "Seguir novos seguidores",
+
+	"Follow": "Seguir",
+	"Unfollow": "Deixar de seguir",
+	"Help distribute this user's images": "Ajude a distribuir as imagens deste usuário",
+	"Following": "Seguindo",
+	"Activity feed": "Atividade",
+	"Show more...": "Mostrar mais...",
+
+	" started following ": " começou a seguir ",
+	" commented on ": " comentou em ",
+	" liked ": " curtiu ",
+	"'s ": " de ",
+	"_(post, like post)": "publicação",
+	"_(post, comment post)": "comentário",
+
+	"Cancel": "Cancelar",
+	"Save": "Salvar",
+	"Delete": "Excluir",
+
+	"User's profile site not loaded to your client yet.": "A página de perfil do usuário ainda não foi carregada completamente.",
+	"Download user's site": "Baixar página do usuário",
+
+	"Browse all \\u203A": "Ver todos",
+	"New users": "Novos usuários",
+	"Suggested users": "Usuários sugeridos",
+
+	"Create new profile": "Criar novo perfil",
+	"Creating new profile...": "Criando novo perfil...",
+	"Checking user on selected hub...": "Verificando usuário no hub selecionado...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "O usuário \" + Page.site_info.cert_user_id + \" já existe neste hub",
+	"Select ID...": "Selecionar ID...",
+	"Seeded HUBs": "HUBs compartilhados",
+	"Available HUBs": "HUBs disponíveis",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(Com isto você escolhe onde o seu perfil será armazenado. Não há diferença no conteúdo e você poderá acessar todos os usuários de qualquer hub)",
+
+	"Random EpixNet user": "Usuário aleatório do EpixNet",
+	"Hello Epix Post!": "Olá Epix Post!",
+
+	"Loading...\\nShow image": "Carregando...\\nMostrar imagem",
+	"Help distribute this user's new images": "Ajude a distribuir as novas imagens deste usuário",
+	"Delete image": "Excluir imagem",
+	"Show image": "Mostrar imagem",
+	"'s new images": " novas imagens de ",
+
+	"Comment": "Comentário",
+	"Add your comment": "Adicione seu comentário",
+	"Reply": "Responder",
+
+	"Everyone": "Todos",
+	"Followed users": "Usuários seguidos",
+	"Show more posts...": "Mostrar mais publicações...",
+	"Show more comments...": "Mostrar mais comentários...",
+	"No posts yet": "Ainda não há publicações",
+	"Let's follow some users!": "Vamos seguir alguns usuários!",
+
+	"Select user to post new content": "Selecione um usuário para publicar novo conteúdo",
+	"Write something...": "Escreva algo...",
+	"Submit new post": "Publicar nova postagem",
+	"Invalid image, only jpg format supported": "Imagem inválida, apenas o formato JPG é suportado",
+
+	"Follow in newsfeed": "Seguir no feed de notícias",
+
+	"New users in Epix Post": "Novos usuários no Epix Post",
+	"Total: ": "Total: ",
+	" registered users": " usuários registrados",
+
+	" minutes ago": " minutos atrás",
+	" hours ago": " horas atrás",
+	" days ago": " dias atrás",
+	"on ": "em ",
+	"Just now": "Agora mesmo"
+}

@@ -1,0 +1,81 @@
+{
+	"Visitor": "Gost",
+	"Select your account": "Izberite svoj račun",
+	"You need a profile for this feature": "Za to funkcijo potrebujete profil",
+
+	"Follow username mentions": "Spremljaj omembe uporabniškega imena",
+	"Follow comments on your posts": "Spremljaj komentarje na svojih objavah",
+	"Follow new followers": "Spremljaj nove sledilce",
+
+	"Follow": "Sledi",
+	"Unfollow": "Prenehaj slediti",
+	"Help distribute this user's images": "Pomagaj širiti slike tega uporabnika",
+	"Following": "Sledi",
+	"Activity feed": "Dejavnost",
+	"Show more...": "Prikaži več...",
+
+	" started following ": " je začel slediti ",
+	" commented on ": " je komentiral ",
+	" liked ": " je všečkal ",
+	"'s ": " ",
+	"_(post, like post)": "objava",
+	"_(post, comment post)": "komentar",
+
+	"Cancel": "Prekliči",
+	"Save": "Shrani",
+	"Delete": "Izbriši",
+
+	"User's profile site not loaded to your client yet.": "Uporabnikova profilna stran še ni bila v celoti naložena.",
+	"Download user's site": "Prenesi uporabnikovo stran",
+
+	"Browse all \\u203A": "Prikaži vse",
+	"New users": "Novi uporabniki",
+	"Suggested users": "Predlagani uporabniki",
+
+	"Create new profile": "Ustvari nov profil",
+	"Creating new profile...": "Ustvarjanje novega profila...",
+	"Checking user on selected hub...": "Preverjanje uporabnika na izbranem vozlišču...",
+	"User \" + Page.site_info.cert_user_id + \" already exists on this hub": "Uporabnik \" + Page.site_info.cert_user_id + \" že obstaja na tem vozlišču",
+	"Select ID...": "Izberi ID...",
+	"Seeded HUBs": "Deljena vozlišča",
+	"Available HUBs": "Razpoložljiva vozlišča",
+	"(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)":
+	"(Tukaj izberete, kje bo vaš profil shranjen. V vsebini ni razlik in do vseh uporabnikov lahko dostopate iz katerega koli vozlišča)",
+
+	"Random EpixNet user": "Naključni uporabnik EpixNet",
+	"Hello Epix Post!": "Pozdravljen Epix Post!",
+
+	"Loading...\\nShow image": "Nalaganje...\\nPrikaži sliko",
+	"Help distribute this user's new images": "Pomagaj širiti nove slike tega uporabnika",
+	"Delete image": "Izbriši sliko",
+	"Show image": "Prikaži sliko",
+	"'s new images": " nove slike",
+
+	"Comment": "Komentar",
+	"Add your comment": "Dodaj svoj komentar",
+	"Reply": "Odgovori",
+
+	"Everyone": "Vsi",
+	"Followed users": "Spremljani uporabniki",
+	"Show more posts...": "Prikaži več objav...",
+	"Show more comments...": "Prikaži več komentarjev...",
+	"No posts yet": "Še ni objav",
+	"Let's follow some users!": "Začnimo slediti uporabnikom!",
+
+	"Select user to post new content": "Izberite uporabnika za objavo nove vsebine",
+	"Write something...": "Napišite nekaj...",
+	"Submit new post": "Objavi novo objavo",
+	"Invalid image, only jpg format supported": "Neveljavna slika, podprt je samo format JPG",
+
+	"Follow in newsfeed": "Sledi v viru novic",
+
+	"New users in Epix Post": "Novi uporabniki v Epix Post",
+	"Total: ": "Skupaj: ",
+	" registered users": " registriranih uporabnikov",
+
+	" minutes ago": " minut nazaj",
+	" hours ago": " ur nazaj",
+	" days ago": " dni nazaj",
+	"on ": "dne ",
+	"Just now": "Pravkar"
+}
