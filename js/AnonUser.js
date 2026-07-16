@@ -20,13 +20,13 @@
 
     like(site, post_uri, cb) {
       if (cb == null) cb = null;
-      Page.cmd("wrapperNotification", ["info", "You need a profile for this feature"]);
+      Page.cmd("wrapperNotification", ["info", _("You need a profile for this feature")]);
       if (cb) cb(true);
     }
 
     dislike(site, post_uri, cb) {
       if (cb == null) cb = null;
-      Page.cmd("wrapperNotification", ["info", "You need a profile for this feature"]);
+      Page.cmd("wrapperNotification", ["info", _("You need a profile for this feature")]);
       if (cb) cb(true);
     }
 
@@ -47,7 +47,7 @@
 
     comment(site, post_uri, body, cb) {
       if (cb == null) cb = null;
-      Page.cmd("wrapperNotification", ["info", "You need a profile for this feature"]);
+      Page.cmd("wrapperNotification", ["info", _("You need a profile for this feature")]);
       if (typeof cb === "function") cb(false);
     }
 

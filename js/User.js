@@ -7,6 +7,9 @@
       this.resolveMyXidName = this.resolveMyXidName.bind(this);
       this.resolveXidName = this.resolveXidName.bind(this);
       this.renderList = this.renderList.bind(this);
+      this.renderGridCard = this.renderGridCard.bind(this);
+      this.handleCardClick = this.handleCardClick.bind(this);
+      this.getHandle = this.getHandle.bind(this);
       this.handleMuteClick = this.handleMuteClick.bind(this);
       this.handleDownloadClick = this.handleDownloadClick.bind(this);
       this.download = this.download.bind(this);
@@ -49,10 +52,15 @@
       if ((ref2 = this.row) != null ? ref2.cert_user_id : void 0) {
         return this.row.cert_user_id;
       }
+      // Fresh profiles carry no user_name and the db row's cert columns only
+      // appear after a full rebuild; fall back to our own selected cert.
+      if (this.auth_address && Page.site_info && Page.site_info.auth_address === this.auth_address && Page.site_info.cert_user_id) {
+        return Page.site_info.cert_user_id.replace(/@.*/, "");
+      }
       if (this.auth_address) {
         return this.auth_address.slice(0, 16) + "...";
       }
-      return "Unknown";
+      return _("Unknown");
     }
 
     getDisplayIntro() {
@@ -64,6 +72,20 @@
         return this.row.intro;
       }
       return "";
+    }
+
+    // Short second line under the display name: the cert id, or a truncated
+    // address when there is no cert.
+    getHandle() {
+      var ref;
+      var cert = (ref = this.row) != null ? ref.cert_user_id : void 0;
+      if (cert) {
+        return cert;
+      }
+      if (this.auth_address && this.auth_address.length > 24) {
+        return this.auth_address.slice(0, 14) + "..." + this.auth_address.slice(-6);
+      }
+      return this.auth_address || "";
     }
 
     getDirectory() {
@@ -166,6 +188,9 @@
 
     hasHelp(cb) {
       return Page.cmd("OptionalHelpList", [this.hub], (helps) => {
+        if (!helps || helps.error) {
+          return cb(false);
+        }
         return cb(helps["data/users/" + (this.getDirectory())]);
       });
     }
@@ -176,11 +201,7 @@
         site = this.hub;
       }
       user_dir = this.getDirectory();
-      if (site === Page.userdb) {
-        return "merged-EpixPost/" + site + "/data/userdb/" + user_dir;
-      } else {
-        return "merged-EpixPost/" + site + "/data/users/" + user_dir;
-      }
+      return "merged-EpixPost/" + site + "/data/users/" + user_dir;
     }
 
     getLink() {
@@ -241,7 +262,12 @@
       } else if (this.isSeeding() && (((ref4 = this.row) != null ? ref4.avatar : void 0) === "png" || ((ref5 = this.row) != null ? ref5.avatar : void 0) === "jpg")) {
         attrs.style = "background-image: url('" + (this.getAvatarLink()) + "')";
       } else {
-        attrs.style = "background: linear-gradient(" + Text.toColor(this.auth_address) + "," + Text.toColor(this.auth_address.slice(-5)) + ")";
+        // Flat fallback: solid color derived from the address plus the
+        // display name's initial (no gradients)
+        attrs.style = "background-color: " + Text.toColor(this.auth_address || "");
+        var name = this.getDisplayName();
+        var initial = name && name !== _("Unknown") ? name.charAt(0).toUpperCase() : "?";
+        return h("a.avatar.letter", attrs, initial);
       }
       return h("a.avatar", attrs);
     }
@@ -254,9 +280,7 @@
         cb = null;
       }
       return Page.cmd("fileWrite", [this.getPath(site) + "/data.json", Text.fileEncode(data)], (res_write) => {
-        if (Page.server_info.rev > 1400) {
-          Page.content.update();
-        }
+        Page.content.update();
         if (typeof cb === "function") {
           cb(res_write);
         }
@@ -300,19 +324,75 @@
       });
     }
 
-    comment(site, post_uri, body, cb) {
+    comment(site, post_uri, body, cb, reply_to) {
       if (cb == null) {
         cb = null;
       }
+      if (reply_to == null) {
+        reply_to = null;
+      }
       return this.getData(site, (data) => {
-        data.comment.push({
+        var row = {
           "comment_id": data.next_comment_id,
           "body": body,
           "post_uri": post_uri,
           "date_added": Time.timestamp()
-        });
+        };
+        if (reply_to) {
+          row["reply_to"] = reply_to;
+        }
+        data.comment.push(row);
         data.next_comment_id += 1;
         return this.save(data, site, (res) => {
+          if (cb) {
+            return cb(res);
+          }
+        });
+      });
+    }
+
+    // Announce a hub in the user's data.json so other users can discover it
+    // on the Hubs page. The announce lands on the default hub when the user
+    // has a profile there (widest audience), otherwise on the user's active
+    // hub. One entry per hub address: announcing again replaces the old one.
+    announceHub(hub_address, title, description, cb) {
+      if (cb == null) {
+        cb = null;
+      }
+      var target = null;
+      var ref, ref1, ref2;
+      var default_hubs = ((ref = Page.site_info) != null ? (ref1 = ref.content) != null ? (ref2 = ref1.settings) != null ? ref2.default_hubs : void 0 : void 0 : void 0) || {};
+      for (var address in default_hubs) {
+        if (Page.user_hubs && Page.user_hubs[address]) {
+          target = address;
+          break;
+        }
+      }
+      if (!target) {
+        target = this.hub;
+      }
+      this.log("Announcing hub", hub_address, "on", target);
+      return this.getData(target, (data) => {
+        if (data.hub_announce == null) {
+          data.hub_announce = [];
+        }
+        var row = {
+          "address": hub_address,
+          "title": title,
+          "description": description || "",
+          "date_added": Time.timestamp()
+        };
+        var replaced = false;
+        for (var i = 0; i < data.hub_announce.length; i++) {
+          if (data.hub_announce[i].address === hub_address) {
+            data.hub_announce[i] = row;
+            replaced = true;
+          }
+        }
+        if (!replaced) {
+          data.hub_announce.push(row);
+        }
+        return this.save(data, target, (res) => {
           if (cb) {
             return cb(res);
           }
@@ -437,13 +517,11 @@
     handleFollowClick(e) {
       this.submitting_follow = true;
       if (!this.isFollowed()) {
-        Animation.flashIn(e.target);
         Page.user.followUser(this.hub, this.auth_address, this.row.user_name, (res) => {
           this.submitting_follow = false;
           return Page.projector.scheduleRender();
         });
       } else {
-        Animation.flashOut(e.target);
         Page.user.unfollowUser(this.hub, this.auth_address, (res) => {
           this.submitting_follow = false;
           return Page.projector.scheduleRender();
@@ -466,46 +544,105 @@
     }
 
     handleMuteClick(e) {
-      if (Page.server_info.rev < 1880) {
-        Page.cmd("wrapperNotification", ["info", "You need EpixNet 0.5.2 to use this feature."]);
-        return false;
-      }
       Page.cmd("muteAdd", [this.auth_address, this.row.cert_user_id, "Muted from [page](/" + Page.address + "/?" + Page.history_state.url + ")"]);
       return false;
     }
 
-    renderList(type) {
-      var classname, enterAnimation, exitAnimation, followed, link, seeding, title;
+    // Clicks anywhere on a grid card open the profile. Nested links (follow
+    // button, avatar, name) handle themselves; the click still bubbles here,
+    // so skip anything that came from an anchor.
+    handleCardClick(e) {
+      if (e.target && e.target.closest && e.target.closest("a")) {
+        return true;
+      }
+      return Page.navigate(this.getLink());
+    }
+
+    // Compact centered card for the Users page grid. list_type is the
+    // UserList type ("active", "suggested", ...) the card is rendered in.
+    renderGridCard(list_type) {
+      var handle, intro, link, meta, name, title;
+      link = this.getLink();
+      if (this.isFollowed()) {
+        title = _("Unfollow");
+      } else {
+        title = _("Follow");
+      }
+      name = this.getDisplayName();
+      handle = this.getHandle();
+      if (handle === name) {
+        handle = "";
+      }
+      // The "active" query counts the user's posts from the last 7 days; the
+      // other user list queries have no date_added column (json table), so
+      // only show Time.since for a real timestamp (follower lists have one).
+      if (list_type === "active" && this.row.posts) {
+        meta = this.row.posts + " " + _("posts this week");
+      } else if (typeof this.row.date_added === "number" && isFinite(this.row.date_added)) {
+        meta = Time.since(this.row.date_added);
+      } else {
+        meta = null;
+      }
+      intro = this.getDisplayIntro();
+      return h("div.user.card.grid", {
+        key: this.hub + "/" + this.auth_address,
+        classes: {
+          followed: this.isFollowed(),
+          notseeding: !this.isSeeding()
+        },
+        onclick: this.handleCardClick
+      }, [
+        h("a.button.button-follow", {
+          href: link,
+          onclick: this.handleFollowClick,
+          title: title,
+          classes: {
+            loading: this.submitting_follow
+          }
+        }, "+"), this.renderAvatar({
+          href: link,
+          onclick: Page.handleLinkClick
+        }), h("a.name.link", {
+          href: link,
+          onclick: Page.handleLinkClick
+        }, name), handle ? h("div.handle", handle) : void 0,
+        meta ? h("div.meta", meta) : void 0,
+        this.row.followed_by ? h("div.intro.followedby", [
+          _("Followed by") + " ", h("a.name.link", {
+            href: "?ProfileName/" + this.row.followed_by,
+            onclick: Page.handleLinkClick
+          }, this.row.followed_by)
+        ]) : intro ? h("div.intro", intro) : void 0
+      ]);
+    }
+
+    renderList(type, list_type) {
+      var followed, link, seeding, title;
       if (type == null) {
         type = "normal";
       }
-      classname = "";
-      if (type === "card") {
-        classname = ".card";
+      if (list_type == null) {
+        list_type = null;
+      }
+      if (type === "grid") {
+        return this.renderGridCard(list_type);
       }
       link = this.getLink();
       followed = this.isFollowed();
       seeding = this.isSeeding();
       if (followed) {
-        title = "Unfollow";
+        title = _("Unfollow");
       } else {
-        title = "Follow";
+        title = _("Follow");
       }
-      if (type !== "card") {
-        enterAnimation = Animation.slideDown;
-        exitAnimation = Animation.slideUp;
-      } else {
-        enterAnimation = null;
-        exitAnimation = null;
-      }
-      return h("div.user" + classname, {
+      return h("div.user", {
         key: this.hub + "/" + this.auth_address,
         classes: {
           followed: followed,
           notseeding: !seeding
         },
-        enterAnimation: enterAnimation,
-        exitAnimation: exitAnimation
+        enterAnimation: Animation.slideDown,
+        exitAnimation: Animation.slideUp
       }, [
         h("a.button.button-follow", {
           href: link,
@@ -521,9 +658,9 @@
           h("a.name.link", {
             href: link,
             onclick: Page.handleLinkClick
-          }, this.getDisplayName()), type === "card" ? h("span.added", Time.since(this.row.date_added)) : void 0
+          }, this.getDisplayName())
         ]), this.row.followed_by ? h("div.intro.followedby", [
-          "Followed by ", h("a.name.link", {
+          _("Followed by") + " ", h("a.name.link", {
             href: "?ProfileName/" + this.row.followed_by,
             onclick: Page.handleLinkClick
           }, this.row.followed_by)
@@ -554,7 +691,7 @@
         }
         return;
       }
-      return Page.cmd("xidResolveIdentity", [this.auth_address], (result) => {
+      return Page.cmd("xidResolve", [this.auth_address], (result) => {
         if (result != null ? result.name : void 0) {
           return typeof cb === "function" ? cb(result.name) : void 0;
         } else {

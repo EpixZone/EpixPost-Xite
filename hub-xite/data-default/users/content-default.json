@@ -1,0 +1,24 @@
+{
+ "files": {},
+ "modified": 0,
+ "signs": {},
+ "user_contents": {
+  "cert_signers": {
+   "xid.epix": ["chain"]
+  },
+  "permission_rules": {
+   ".*": {
+    "files_allowed": ".*",
+    "max_size": 300000,
+    "max_size_optional": 500000000
+   }
+  },
+  "permissions": {
+   ".*": {
+    "files_allowed": ".*",
+    "max_size": 300000,
+    "max_size_optional": 500000000
+   }
+  }
+ }
+}

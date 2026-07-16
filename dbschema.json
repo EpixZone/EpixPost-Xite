@@ -3,13 +3,6 @@
 	"db_file": "merged-EpixPost/EpixPost.db",
 	"version": 3,
 	"maps": {
-		".+/data/userdb/.+/content.json": {
-			"to_json_table": [ "cert_auth_type", "cert_user_id" ],
-			"to_table": ["user"]
-		},
-		".+/data/userdb/users.*json": {
-			"to_table": ["user"]
-		},
 		".+/data/users/.+/content.json": {
 			"to_json_table": [ "cert_auth_type", "cert_user_id" ],
 			"file_name": "data.json"
@@ -19,6 +12,7 @@
 				"post",
 				"comment",
 				"follow",
+				"hub_announce",
 				{"node": "post_like", "table": "post_like", "key_col": "post_uri", "val_col": "date_added"}
 			],
 			"to_json_table": [ "hub", "user_name", "avatar", "intro" ]
@@ -65,12 +59,13 @@
 			"cols": [
 				["comment_id", "INTEGER"],
 				["post_uri", "TEXT"],
+				["reply_to", "TEXT"],
 				["body", "TEXT"],
 				["date_added", "INTEGER"],
 				["json_id", "INTEGER REFERENCES json (json_id)"]
 			],
-			"indexes": ["CREATE UNIQUE INDEX comment_key ON comment(json_id, comment_id)", "CREATE INDEX comment_post_uri ON comment(post_uri)", "CREATE INDEX comment_date_added ON comment(date_added)"],
-			"schema_changed": 2
+			"indexes": ["CREATE UNIQUE INDEX comment_key ON comment(json_id, comment_id)", "CREATE INDEX comment_post_uri ON comment(post_uri)", "CREATE INDEX comment_date_added ON comment(date_added)", "CREATE INDEX comment_reply_to ON comment (reply_to)"],
+			"schema_changed": 3
 		},
 		"follow": {
 			"cols": [
@@ -84,19 +79,16 @@
 			"indexes": ["CREATE UNIQUE INDEX follow_key ON follow(json_id, follow_id)", "CREATE INDEX follow_date_added ON follow(date_added)"],
 			"schema_changed": 2
 		},
-		"user": {
+		"hub_announce": {
 			"cols": [
-				["auth_address", "TEXT"],
-				["cert_user_id", "TEXT"],
-				["hub", "TEXT"],
-				["user_name", "TEXT"],
-				["avatar", "TEXT"],
-				["intro", "TEXT"],
+				["address", "TEXT"],
+				["title", "TEXT"],
+				["description", "TEXT"],
 				["date_added", "INTEGER"],
 				["json_id", "INTEGER REFERENCES json (json_id)"]
 			],
-			"indexes": ["CREATE INDEX json_id ON user(json_id)", "CREATE INDEX date_added ON user(date_added)"],
-			"schema_changed": 3
+			"indexes": ["CREATE INDEX hub_announce_address ON hub_announce(address)"],
+			"schema_changed": 1
 		}
 	},
 	"feeds": {

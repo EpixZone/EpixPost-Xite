@@ -189,47 +189,8 @@
       });
     }
 
-    cloneAnimation(elem, animation) {
-      window.requestAnimationFrame(function() {
-        if (elem.style.pointerEvents === "none") {
-          elem = elem.nextSibling;
-        }
-        elem.style.position = "relative";
-        elem.style.zIndex = "2";
-        var clone_el = elem.cloneNode(true);
-        var cstyle = window.getComputedStyle(elem);
-        clone_el.classList.remove("loading");
-        clone_el.style.position = "absolute";
-        clone_el.style.zIndex = "1";
-        clone_el.style.pointerEvents = "none";
-        clone_el.style.animation = "none";
-        elem.parentNode.insertBefore(clone_el, elem);
-        var cloneleft = clone_el.offsetLeft;
-        clone_el.parentNode.removeChild(clone_el);
-        clone_el.style.marginLeft = parseInt(cstyle.marginLeft) + elem.offsetLeft - cloneleft + "px";
-        elem.parentNode.insertBefore(clone_el, elem);
-        clone_el.style.animation = animation + " 0.8s ease-in-out forwards";
-        setTimeout(function() {
-          clone_el.remove();
-        }, 1000);
-      });
-    }
 
-    flashIn(elem) {
-      if (elem.offsetWidth > 100) {
-        this.cloneAnimation(elem, "flash-in-big");
-      } else {
-        this.cloneAnimation(elem, "flash-in");
-      }
-    }
 
-    flashOut(elem) {
-      if (elem.offsetWidth > 100) {
-        this.cloneAnimation(elem, "flash-out-big");
-      } else {
-        this.cloneAnimation(elem, "flash-out");
-      }
-    }
   }
 
   window.Animation = new Animation();

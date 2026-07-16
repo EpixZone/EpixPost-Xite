@@ -8,17 +8,19 @@
     constructor() {
       super();
       this.signSiteContent = this.signSiteContent.bind(this);
-      this.queryUserdb = this.queryUserdb.bind(this);
       this.autoCreateXidProfile = this.autoCreateXidProfile.bind(this);
       this.checkUser = this.checkUser.bind(this);
       this.getXidDisplayBio = this.getXidDisplayBio.bind(this);
       this.getXidDisplayAvatar = this.getXidDisplayAvatar.bind(this);
       this.getXidDisplayName = this.getXidDisplayName.bind(this);
+      this.getHubTitle = this.getHubTitle.bind(this);
       this.resolveXidProfiles = this.resolveXidProfiles.bind(this);
       this.needSite = this.needSite.bind(this);
       this.updateSiteInfo = this.updateSiteInfo.bind(this);
+      this.updateContentNoanim = this.updateContentNoanim.bind(this);
       this.onOpenWebsocket = this.onOpenWebsocket.bind(this);
       this.handleLinkClick = this.handleLinkClick.bind(this);
+      this.navigate = this.navigate.bind(this);
       this.renderContent = this.renderContent.bind(this);
     }
 
@@ -31,40 +33,47 @@
       this.user = false;
       this.user_hubs = {};
       this.user_loaded = false;
-      this.userdb = "1UDbADib99KE9d3qZ87NqJF2QLTHmMkoV";
+      this.xid_site = "epix1xauthduuyn63k6kj54jzgp4l8nnjlhrsyaku8c";
       this.cache_time = Time.timestamp();
       this.xid_profiles = {};
+      // Image paths whose optional download timed out, with the fail time;
+      // keeps the retry state across component re-creation (see PostMeta).
+      this.failed_images = {};
+      this.can_go_back = false;
       this.on_site_info = new Deferred();
       this.on_local_storage = new Deferred();
       this.on_user_info = new Deferred();
       this.on_loaded = new Deferred();
       this.local_storage = null;
+      this.on_site_info.then(() => {
+        this.setLoadingProgress(35, _("Loading your settings..."));
+      });
       this.on_local_storage.then(() => {
+        this.setLoadingProgress(55, _("Checking your account..."));
         this.checkUser(() => {
           this.on_user_info.resolve();
         });
       });
-      this.on_site_info.then(() => {
-        if (this.site_info.settings.permissions.indexOf("Merger:EpixPost") < 0) {
-          this.cmd("wrapperPermissionAdd", "Merger:EpixPost", () => {
-            this.updateSiteInfo(() => {
-              this.content.update();
-            });
-          });
-        }
+      this.on_user_info.then(() => {
+        this.setLoadingProgress(75, _("Loading feed..."));
       });
+      // The Merger permission is no longer requested automatically on boot:
+      // the onboarding card on the feed asks for it as its first step.
     }
 
     createProjector() {
       this.projector = maquette.createProjector();
-      this.head = new Head();
+      this.shell = new Shell();
+      this.composer = this.shell.composer;
       this.overlay = new Overlay();
       this.content_feed = new ContentFeed();
       this.content_users = new ContentUsers();
       this.content_profile = new ContentProfile();
+      this.content_thread = new ContentThread();
       this.content_create_profile = new ContentCreateProfile();
+      this.content_hubs = new ContentHubs();
+      this.content_settings = new ContentSettings();
       this.scrollwatcher = new Scrollwatcher();
-      this.trigger = new Trigger();
       if (base.href.indexOf("?") === -1) {
         this.route("");
       } else {
@@ -72,19 +81,38 @@
         this.route(url);
         this.history_state["url"] = url;
       }
-      this.on_loaded.then(() => {
+      this.markLoaded = () => {
         this.log("onloaded");
+        this.setLoadingProgress(100, _("Ready!"));
+        this.hideLoading();
         window.requestAnimationFrame(() => {
           document.body.classList.add("loaded");
         });
-      });
-      this.projector.replace($("#Head"), this.head.render);
+      };
+      this.on_loaded.then(this.markLoaded);
+      this.projector.replace($("#Shell"), this.shell.render);
       this.projector.replace($("#Overlay"), this.overlay.render);
-      this.projector.merge($("#Trigger"), this.trigger.render);
       this.loadLocalStorage();
       setInterval(function() {
         Page.projector.scheduleRender();
       }, 60 * 1000);
+    }
+
+    setLoadingProgress(percent, label) {
+      var bar = document.getElementById("loading-bar-fill");
+      var step = document.getElementById("loading-step");
+      if (bar) bar.style.width = percent + "%";
+      if (step) step.textContent = label;
+    }
+
+    hideLoading() {
+      var overlay = document.getElementById("loading-overlay");
+      if (overlay) {
+        overlay.classList.add("fade-out");
+        setTimeout(function() {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 500);
+      }
     }
 
     renderContent() {
@@ -98,11 +126,24 @@
     route(query) {
       var changed, content;
       this.params = Text.queryParse(query);
+      if (!this.params.urls) {
+        // Query with only key=val pairs (no path part): route to the feed
+        this.params.urls = [""];
+      }
       this.log("Route", this.params);
+      if (this.shell) {
+        this.shell.title = null;
+      }
       if (this.params.urls[0] === "Create+profile") {
         content = this.content_create_profile;
       } else if (this.params.urls[0] === "Users" && (content = this.content_users)) {
 
+      } else if (this.params.urls[0] === "Hubs") {
+        content = this.content_hubs;
+        this.content_hubs.need_update = true;
+      } else if (this.params.urls[0] === "Settings") {
+        content = this.content_settings;
+        this.content_settings.need_update = true;
       } else if (this.params.urls[0] === "ProfileName") {
         this.content_profile.findUser(this.params.urls[1], (user) => {
           this.setUrl(user.getLink(), "replace");
@@ -112,9 +153,8 @@
         changed = this.content_profile.auth_address !== this.params.urls[2];
         this.content_profile.setUser(this.params.urls[1], this.params.urls[2]).filter(null);
       } else if (this.params.urls[0] === "Post") {
-        content = this.content_profile;
-        changed = this.content_profile.auth_address !== this.params.urls[2] || this.content_profile.filter_post_id !== this.params.urls[3];
-        this.content_profile.setUser(this.params.urls[1], this.params.urls[2]).filter(this.params.urls[3]);
+        content = this.content_thread;
+        changed = this.content_thread.setPost(this.params.urls[1], this.params.urls[2], this.params.urls[3], this.params.urls[4]);
       } else {
         content = this.content_feed;
       }
@@ -145,6 +185,7 @@
         this.cmd("wrapperReplaceState", [this.history_state, "", url]);
       } else {
         this.cmd("wrapperPushState", [this.history_state, "", url]);
+        this.can_go_back = true;
       }
       this.route(url);
       return false;
@@ -154,26 +195,33 @@
       if (e.which === 2) {
         return true;
       } else {
-        this.log("save scrollTop", window.pageYOffset);
-        this.history_state["scrollTop"] = window.pageYOffset;
-        this.cmd("wrapperReplaceState", [this.history_state, null]);
-        window.scroll(window.pageXOffset, 0);
-        this.history_state["scrollTop"] = 0;
-        this.on_loaded.resolved = false;
-        document.body.classList.remove("loaded");
-        this.setUrl(e.currentTarget.search);
-        return false;
+        return this.navigate(e.currentTarget.search);
       }
     }
 
+    // In-app navigation with the scroll/loaded bookkeeping links need; used
+    // by handleLinkClick and by non-anchor click targets (e.g. user cards).
+    navigate(url) {
+      this.log("save scrollTop", window.pageYOffset);
+      this.history_state["scrollTop"] = window.pageYOffset;
+      this.cmd("wrapperReplaceState", [this.history_state, null]);
+      window.scroll(window.pageXOffset, 0);
+      this.history_state["scrollTop"] = 0;
+      this.on_loaded.resolved = false;
+      // resolve() consumes the callback list, so re-arm it or body.loaded
+      // (and scrolling) never comes back after an in-app navigation.
+      this.on_loaded.then(this.markLoaded);
+      document.body.classList.remove("loaded");
+      this.setUrl(url);
+      return false;
+    }
+
     createUrl(key, val) {
-      var params, vals;
+      var params, k;
       params = JSON.parse(JSON.stringify(this.params));
-      if (typeof key === "Object") {
-        vals = key;
-        for (key in keys) {
-          val = keys[key];
-          params[key] = val;
+      if (typeof key === "object") {
+        for (k in key) {
+          params[k] = key[k];
         }
       } else {
         params[key] = val;
@@ -213,6 +261,8 @@
     }
 
     onOpenWebsocket(e) {
+      this.cmd("wrapperSetViewport", "width=device-width, initial-scale=1");
+      this.setLoadingProgress(15, _("Loading site info..."));
       this.updateSiteInfo();
       this.cmd("serverInfo", {}, (server_info) => {
         this.setServerInfo(server_info);
@@ -226,20 +276,26 @@
     updateSiteInfo(cb) {
       if (cb == null) cb = null;
       var on_site_info = new Deferred();
-      this.cmd("mergerSiteList", {}, (merged_sites) => {
+      // query_site_info=true so every consumer (hub pills, filter menu,
+      // composer) can resolve hub titles from one cache. Values are truthy
+      // either way, so the seeded-checks all keep working.
+      this.cmd("mergerSiteList", true, (merged_sites) => {
         this.merged_sites = merged_sites;
         on_site_info.then(() => {
           if (this.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0) {
-            if (!this.merged_sites[this.userdb] && this.userdb.startsWith("epix1")) {
-              this.cmd("mergerSiteAdd", this.userdb);
-            }
             var default_hubs = (this.site_info.content != null ? (this.site_info.content.settings != null ? this.site_info.content.settings.default_hubs : void 0) : void 0) || {};
-            for (var address in default_hubs) {
-              if (!this.merged_sites[address]) {
-                this.log("Auto-adding default hub", address);
-                this.cmd("mergerSiteAdd", address);
+            // Auto-add waits for local storage: hubs the user explicitly
+            // removed (Stop seeding / Leave hub on the Hubs page) are
+            // remembered in settings.removed_hubs and not re-added.
+            this.on_local_storage.then(() => {
+              var removed_hubs = this.local_storage.settings.removed_hubs || {};
+              for (var address in default_hubs) {
+                if (!this.merged_sites[address] && !removed_hubs[address]) {
+                  this.log("Auto-adding default hub", address);
+                  this.cmd("mergerSiteAdd", address);
+                }
               }
-            }
+            });
           }
           if (typeof cb === "function") cb(true);
         });
@@ -251,11 +307,46 @@
       });
     }
 
+    // Stable callback for RateLimit (it dedupes on function identity):
+    // refresh the current content without enter/exit animations.
+    updateContentNoanim() {
+      if (this.content) {
+        this.content.update("noanim");
+      }
+    }
+
     needSite(address, cb) {
+      this.setHubRemoved(address, false);
       if (this.merged_sites[address]) {
         if (typeof cb === "function") cb(true);
       } else {
         Page.cmd("mergerSiteAdd", address, cb);
+      }
+    }
+
+    // Remember (or forget) that the user explicitly removed a hub, so
+    // updateSiteInfo does not auto re-add removed default hubs on the next
+    // refresh. Stored in local storage as settings.removed_hubs.
+    setHubRemoved(address, removed) {
+      if (!this.local_storage) {
+        return;
+      }
+      var removed_hubs = this.local_storage.settings.removed_hubs;
+      if (removed) {
+        if (!removed_hubs) {
+          removed_hubs = this.local_storage.settings.removed_hubs = {};
+        }
+        if (removed_hubs[address]) {
+          return;
+        }
+        removed_hubs[address] = true;
+        this.saveLocalStorage();
+      } else {
+        if (!removed_hubs || !removed_hubs[address]) {
+          return;
+        }
+        delete removed_hubs[address];
+        this.saveLocalStorage();
       }
     }
 
@@ -293,6 +384,18 @@
         }
         if (typeof cb === "function") cb();
       });
+    }
+
+    // Canonical hub title: the seeded hub's own signed title, else the
+    // featured-hub entry in our content.json, else a truncated address.
+    getHubTitle(address) {
+      var ref, ref1, ref2, ref3;
+      var site = this.merged_sites != null ? this.merged_sites[address] : void 0;
+      if (site && site.content && site.content.title) {
+        return site.content.title;
+      }
+      var title = (ref = this.site_info) != null ? (ref1 = ref.content) != null ? (ref2 = ref1.settings) != null ? (ref3 = ref2.default_hubs) != null ? (ref3[address] != null ? ref3[address].title : void 0) : void 0 : void 0 : void 0 : void 0;
+      return title || address.slice(0, 16) + "...";
     }
 
     getXidDisplayName(auth_address, fallback) {
@@ -343,8 +446,9 @@
               user_row = row;
             }
           }
-          if (this.user_hubs[this.local_storage.settings.hub]) {
-            row = this.user_hubs[this.local_storage.settings.hub];
+          var settings_hub = this.local_storage != null ? (this.local_storage.settings != null ? this.local_storage.settings.hub : void 0) : void 0;
+          if (settings_hub && this.user_hubs[settings_hub]) {
+            row = this.user_hubs[settings_hub];
             this.log("Force hub", row.site);
             user_row = row;
             user_row.hub = row.site;
@@ -370,20 +474,7 @@
           if (this.site_info.cert_user_id != null ? this.site_info.cert_user_id.match(/@xid$/) : void 0) {
             this.autoCreateXidProfile(cb);
           } else {
-            this.queryUserdb(this.site_info.auth_address, (user) => {
-              if (user) {
-                if (!this.merged_sites[user.hub]) {
-                  this.log("Profile not seeded, but found in the userdb", user);
-                  Page.cmd("mergerSiteAdd", user.hub, () => {
-                    if (typeof cb === "function") cb(true);
-                  });
-                } else {
-                  if (typeof cb === "function") cb(true);
-                }
-              } else {
-                if (typeof cb === "function") cb(false);
-              }
-            });
+            if (typeof cb === "function") cb(false);
           }
         }
         Page.projector.scheduleRender();
@@ -432,22 +523,6 @@
       ensureHub();
     }
 
-    queryUserdb(auth_address, cb) {
-      var query = "SELECT\n CASE WHEN user.auth_address IS NULL THEN REPLACE(json.directory, \"data/userdb/\", \"\") ELSE user.auth_address END AS auth_address,\n CASE WHEN user.cert_user_id IS NULL THEN json.cert_user_id ELSE user.cert_user_id END AS cert_user_id,\n *\nFROM user\nLEFT JOIN json USING (json_id)\nWHERE\n user.auth_address = :auth_address OR\n json.directory = :directory\nLIMIT 1";
-      Page.cmd("dbQuery", [
-        query, {
-          auth_address: auth_address,
-          directory: "data/userdb/" + auth_address
-        }
-      ], (res) => {
-        if ((res != null ? res.length : void 0) > 0) {
-          if (typeof cb === "function") cb(res[0]);
-        } else {
-          if (typeof cb === "function") cb(false);
-        }
-      });
-    }
-
     signSiteContent(cb) {
       if (cb == null) cb = null;
       this.log("Signing site root content.json with stored key...");
@@ -465,7 +540,7 @@
             if (typeof cb === "function") cb(pub_res);
           });
         } else {
-          this.cmd("wrapperNotification", ["error", "Site signing failed: " + ((res != null ? res.error : void 0) || res)]);
+          this.cmd("wrapperNotification", ["error", _("Site signing failed:") + " " + ((res != null ? res.error : void 0) || res)]);
           if (typeof cb === "function") cb(false);
         }
       });
@@ -481,6 +556,7 @@
             params.state.url = params.href.replace(/.*\?/, "");
           }
           this.on_loaded.resolved = false;
+          this.on_loaded.then(this.markLoaded);
           document.body.classList.remove("loaded");
           window.scroll(window.pageXOffset, params.state.scrollTop || 0);
           this.route(params.state.url || "");
@@ -492,20 +568,32 @@
 
     setSiteInfo(site_info) {
       if (site_info.address === this.address) {
+        var had_permission = this.site_info == null || this.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0;
         if (!this.site_info) {
           this.site_info = site_info;
           this.on_site_info.resolve();
         }
         this.site_info = site_info;
+        var has_permission = site_info.settings != null ? site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0 : false;
+        if (!had_permission && has_permission) {
+          // Merger permission just got granted (patched nodes push siteInfo on
+          // grant): reload merged sites so the feed populates without a reload.
+          this.log("Merger permission granted, reloading merged sites");
+          this.updateSiteInfo(() => {
+            if (this.content) {
+              this.content.update();
+            }
+          });
+        }
         if (site_info.event != null ? site_info.event[0] === "cert_changed" : void 0) {
           this.checkUser((found) => {
             if (Page.site_info.cert_user_id && !found && !Page.site_info.cert_user_id.match(/@xid$/)) {
               this.setUrl("?Create+profile");
             }
             if (Page.site_info.cert_user_id) {
-              Page.head.follows["Mentions"] = true;
-              Page.head.follows["Comments on your posts"] = true;
-              Page.head.saveFollows();
+              Page.shell.follows["Mentions"] = true;
+              Page.shell.follows["Comments on your posts"] = true;
+              Page.shell.saveFollows();
             }
             this.content.update();
           });
@@ -524,23 +612,17 @@
           });
         } else if (file_name.indexOf(site_info.auth_address) !== -1) {
           this.content.update();
-        } else if (!file_name.endsWith("content.json") || file_name.indexOf(this.userdb) !== -1) {
-          if (site_info.tasks > 100) {
-            RateLimit(3000, this.content.update);
-          } else if (site_info.tasks > 20) {
-            RateLimit(1000, this.content.update);
-          } else {
-            RateLimit(500, this.content.update);
-          }
+        } else if (!file_name.endsWith("content.json")) {
+          // Background sync refresh: no per-row animations (each slide-down
+          // reads as flicker when many files arrive) and a slower cadence
+          // while the initial download is still fetching files.
+          RateLimit(site_info.bad_files > 0 ? 2000 : 500, this.updateContentNoanim);
         }
       }
     }
 
     setServerInfo(server_info) {
       this.server_info = server_info;
-      if (this.server_info.rev < 1400) {
-        this.cmd("wrapperNotification", ["error", "This site requries EpixNet 0.4.0+<br>Please delete the site from your current client, update it, then add again!"]);
-      }
       this.projector.scheduleRender();
     }
 

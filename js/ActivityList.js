@@ -3,15 +3,55 @@
   class ActivityList {
     constructor() {
       this.handleMoreClick = this.handleMoreClick.bind(this);
+      this.renderActivity = this.renderActivity.bind(this);
       this.render = this.render.bind(this);
       this.update = this.update.bind(this);
       this.activities = null;
       this.directories = [];
+      // Main feed list (set by ContentFeed): honors the feed hub filter.
+      // The profile page's list keeps it false and stays unfiltered.
+      this.is_feed = false;
       this.need_update = true;
       this.limit = 10;
       this.found = 0;
       this.loading = true;
       this.update_timer = null;
+      this.noanim = false;
+      this.content_key = null;
+    }
+
+    // Fingerprint of the grouped rows: background refreshes that return the
+    // same content skip the re-render (same idea as PostList.getContentKey)
+    getContentKey(row_groups) {
+      var parts = [];
+      for (var i = 0; i < row_groups.length; i++) {
+        var group = row_groups[i];
+        for (var j = 0; j < group.length; j++) {
+          var row = group[j];
+          parts.push([
+            row.type, row.date_added, row.auth_address,
+            row.body != null ? row.body.length : 0
+          ].join("."));
+        }
+      }
+      return parts.join("|");
+    }
+
+    // The feed's hub filter, or null. Same validation as PostList.getFeedHub:
+    // bound as a query param, address shape checked, must still be seeded.
+    getFeedHub() {
+      if (!this.is_feed) {
+        return null;
+      }
+      var ref, ref1;
+      var feed_hub = (ref = Page.local_storage) != null ? ((ref1 = ref.settings) != null ? ref1.feed_hub : void 0) : void 0;
+      if (!feed_hub || !/^epix1[a-z0-9]+$/.test(feed_hub)) {
+        return null;
+      }
+      if (!Page.merged_sites || !Page.merged_sites[feed_hub]) {
+        return null;
+      }
+      return feed_hub;
     }
 
     queryActivities(cb) {
@@ -21,13 +61,21 @@
       } else {
         where = "WHERE json.directory IN " + Text.sqlIn(this.directories) + " AND date_added < " + (Time.timestamp() + 120) + " ";
       }
+      var feed_hub = this.getFeedHub();
+      if (feed_hub) {
+        where += "AND json.site = :feed_hub ";
+      }
       var query = "SELECT\n 'comment' AS type, json.*,\n json.site || \"/\" || post_uri AS subject, body, date_added,\n NULL AS subject_auth_address, NULL AS subject_hub, NULL AS subject_user_name\nFROM\n json\nLEFT JOIN comment USING (json_id)\n " + where + "\n\nUNION ALL\n\nSELECT\n 'post_like' AS type, json.*,\n json.site || \"/\" || post_uri AS subject, '' AS body, date_added,\n NULL AS subject_auth_address, NULL AS subject_hub, NULL AS subject_user_name\nFROM\n json\nLEFT JOIN post_like USING (json_id)\n " + where;
       if (this.directories !== "all") {
         query += "UNION ALL\n\nSELECT\n 'follow' AS type, json.*,\n follow.hub || \"/\" || follow.auth_address AS subject, '' AS body, date_added,\n follow.auth_address AS subject_auth_address, follow.hub AS subject_hub, follow.user_name AS subject_user_name\nFROM\n json\nLEFT JOIN follow USING (json_id)\n " + where;
       }
       query += "\nORDER BY date_added DESC\nLIMIT " + (this.limit + 1);
+      var params = { directories: this.directories };
+      if (feed_hub) {
+        params.feed_hub = feed_hub;
+      }
       this.logStart("Update");
-      Page.cmd("dbQuery", [query, { directories: this.directories }], (rows) => {
+      Page.cmd("dbQuery", [query, params], (rows) => {
         var directories = [];
         rows = rows.filter(function(row) { return row.subject; });
         var all_addresses = [];
@@ -101,7 +149,7 @@
       if (activity.type === "post_like") {
         body = [
           h("a.link", { href: activity_user_link, onclick: Page.handleLinkClick }, activity_display_name),
-          " liked ",
+          " " + _("liked") + " ",
           h("a.link", { href: subject_user_link, onclick: Page.handleLinkClick }, subject_display_name),
           "'s ",
           h("a.link", { href: subject_post_link, onclick: Page.handleLinkClick }, _("post", "like post"))
@@ -121,7 +169,7 @@
       } else if (activity.type === "comment") {
         body = [
           h("a.link", { href: activity_user_link, onclick: Page.handleLinkClick }, activity_display_name),
-          " commented on ",
+          " " + _("commented on") + " ",
           h("a.link", { href: subject_user_link, onclick: Page.handleLinkClick }, subject_display_name),
           "'s ",
           h("a.link", { href: subject_post_link, onclick: Page.handleLinkClick }, _("post", "comment post")),
@@ -130,7 +178,7 @@
       } else if (activity.type === "follow") {
         body = [
           h("a.link", { href: activity_user_link, onclick: Page.handleLinkClick }, activity_display_name),
-          " started following ",
+          " " + _("started following") + " ",
           h("a.link", { href: subject_user_link, onclick: Page.handleLinkClick }, subject_display_name)
         ];
         if (activity_group.length > 1) {
@@ -151,13 +199,27 @@
       } else {
         title = Time.since(activity.date_added);
       }
+      var icon;
+      if (activity.type === "post_like") {
+        icon = "icon-heart.icon-heart-filled";
+      } else if (activity.type === "comment") {
+        icon = "icon-comment";
+      } else if (activity.type === "follow") {
+        icon = "icon-users";
+      } else {
+        icon = "icon-home";
+      }
       back.push(h("div.activity", {
         key: activity.cert_user_id + "_" + activity.date_added + "_" + activity_group.length,
         title: title,
         classes: { latest: now - activity.date_added < 600 },
-        enterAnimation: Animation.slideDown,
-        exitAnimation: Animation.slideUp
-      }, [h("div.circle"), h("div.body", body)]));
+        enterAnimation: this.noanim ? void 0 : Animation.slideDown,
+        exitAnimation: this.noanim ? void 0 : Animation.slideUp
+      }, [
+        h("div.activity-icon." + icon),
+        h("div.body", body),
+        h("div.activity-time", Time.since(activity.date_added))
+      ]));
       return back;
     }
 
@@ -165,6 +227,11 @@
       if (this.need_update) {
         this.need_update = false;
         this.queryActivities((res) => {
+          var content_key = this.getContentKey(res);
+          if (this.activities !== null && content_key === this.content_key) {
+            return;
+          }
+          this.content_key = content_key;
           this.activities = res;
           Page.projector.scheduleRender();
         });
@@ -174,7 +241,7 @@
         this.activities.length > 0 ? h("h2", {
           enterAnimation: Animation.slideDown,
           exitAnimation: Animation.slideUp
-        }, "Activity feed") : void 0,
+        }, _("Activity feed")) : void 0,
         h("div.items", [
           h("div.bg-line"),
           this.activities.slice(0, this.limit).map(this.renderActivity)
@@ -182,7 +249,7 @@
         this.found > this.limit ? h("a.more.small", {
           href: "#More", onclick: this.handleMoreClick,
           enterAnimation: Animation.slideDown, exitAnimation: Animation.slideUp
-        }, "Show more...") : void 0
+        }, _("Show more...")) : void 0
       ]);
     }
 

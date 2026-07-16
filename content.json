@@ -1,127 +1,123 @@
 {
  "address": "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm",
  "address_index": 44217918,
- "background-color": "#F2F4F6",
- "background-color-dark": "#26242E",
+ "background-color": "#FEFEFE",
+ "background-color-dark": "#0B0B0D",
  "description": "Social Network",
  "epixnet_version": "0.0.3",
- "favicon": "favicon.ico",
+ "favicon": "img/favicon.ico",
  "files": {
   "LICENSE": {
    "sha512": "e67014a69caa38c58575f333619243c9ebb3c98d462f0b4823ff5ed3d2cfdba3",
    "size": 1077
   },
   "README.md": {
-   "sha512": "92ac513f0ec99172872a1cb3b70ba70279ae3eb4e5b88ad406f44dfdb51b22df",
-   "size": 2188
+   "sha512": "6f40e6c494bd757fb7497275e7cd41445184683506c29e845d16b354419f56aa",
+   "size": 2420
   },
   "css/all.css": {
-   "sha512": "8a7651a33597e7b2e5ea8c1ff49c180861e17ec594bf01a92ba6beb77706d493",
-   "size": 145791
+   "sha512": "133fb2fec5c5d0fb8bcc5f0839c6a9a92977f35af5f2c78810f10080f39b98e1",
+   "size": 67182
   },
   "dbschema.json": {
-   "sha512": "9284acc9ab250673e764026041eab5eb12aef839ca93d39dddff4041119e7183",
-   "size": 3558
+   "sha512": "e25e6f84e0568618ceee950b1e665d07403ae3aa0c4f327408879e26f59cda54",
+   "size": 3375
   },
-  "favicon.ico": {
-   "sha512": "b28dea3feae6d659b7b9fd02765f720a6a13ae9da07f5f99f0988d852e4b7643",
-   "size": 15406
+  "img/default-avatar.svg": {
+   "sha512": "94993efde5224b7ee9855dd491672ff6204936b748b8be84d7a55808e6dd38f3",
+   "size": 292
   },
-  "img/loading-circle.gif": {
-   "sha512": "339baf1bccb9b80ae29c2493e73b40cf0588c96fc095954b475dea0538aaa929",
-   "size": 2346
-  },
-  "img/loading.gif": {
-   "sha512": "8a42b98962faea74618113166886be488c09dad10ca47fe97005edc5fb40cc00",
-   "size": 723
-  },
-  "img/logo.png": {
-   "sha512": "2d09aa525ce1744469029aac6948e245621a1d13750922021be5546ccfc4a2a8",
-   "size": 74092
+  "img/favicon.ico": {
+   "sha512": "abe1afea9d3318b668ec6f12ff3c123bdf315e9f7fbfe748b2a5061e14ef2254",
+   "size": 15086
   },
   "img/logo.svg": {
-   "sha512": "62f2fad89911573e6f79fd2c8161ce64385ba607a7fd0e6934e19228fb4e67ef",
-   "size": 122198
-  },
-  "img/nav-icon.png": {
-   "sha512": "08b21939aa2c2a8761e6a41a19ae4dfa2efa0ed7309c0b6c976cfbc1ef1dc42e",
+   "sha512": "0a0fecbdd2fecd62309499123d7056d6ae24cfb1296ccd74d2923cd5afc4ce74",
    "size": 937
   },
   "img/nav-icon.svg": {
-   "sha512": "ae7a0a8466d8b4536aaf52a27073f0f8316b90f69826d0c1f6e60707bc696339",
-   "size": 634
-  },
-  "img/unkown.png": {
-   "sha512": "a972f05819097c3a38801b9004bf5011a2dcca257b915617d8ea44c202f2cdbd",
-   "size": 595
+   "sha512": "0a0fecbdd2fecd62309499123d7056d6ae24cfb1296ccd74d2923cd5afc4ce74",
+   "size": 937
   },
   "index.html": {
-   "sha512": "49d96181f7eb0f687fdfa7ef920b2e8397e545893f05ffea7dc069c6e20c15cd",
-   "size": 3307
-  },
-  "js-external/pngencoder.js": {
-   "sha512": "ecaadaad552d2610336995b48360253cd6d847b6aa590fc3d96e7245a5d5fe11",
-   "size": 53602
+   "sha512": "8230ff5d456385e739c1c1f930a9fc7e721a64606cf0d321640d20de8c973c46",
+   "size": 4077
   },
   "js/ActivityList.js": {
-   "sha512": "61d6447781afdb29534a79d74deebb7b84d01b1bb8d920f40cc32df0eb8859f6",
-   "size": 10023
+   "sha512": "be10519ebf394894833ee9c33061bdad4d5309f18fda22381cfb081bd334b8be",
+   "size": 11436
   },
   "js/AnonUser.js": {
-   "sha512": "ba7ae421d8543f6f6af7034113545b80ff3f6ef659169a8a3e20a1bd004d183d",
-   "size": 1667
+   "sha512": "e9ecfe06a5d09c777607848bcae0952e80b3845d1413195dbb821be4073de210",
+   "size": 1676
+  },
+  "js/ComposerModal.js": {
+   "sha512": "f920398fdfc046f7273d56b64b0c0c7bfb49e93e11bfcd38fd6f5f9716a94812",
+   "size": 7593
   },
   "js/ContentCreateProfile.js": {
-   "sha512": "1f3b5098427449bb2292c0acfce5d953e7e288153e0856d577d989e7bf15396f",
-   "size": 7646
+   "sha512": "a29bc66d46344ac3c6f1493dd306502937283f0a7cdb94982c44748d785cd7e6",
+   "size": 7062
   },
   "js/ContentFeed.js": {
-   "sha512": "6595bbb6e537082f24b972bf7975f02ceea3130f2f860c10015407c1346a55ba",
-   "size": 4450
+   "sha512": "dd4072a4048cc604fee9531987824c8acfc21f66e97a32a75b1ed897bb2c4bdd",
+   "size": 5228
+  },
+  "js/ContentHubs.js": {
+   "sha512": "a68823dd50a7e64cfa7dc2ae8f626942e70767f3bd0879e072294237ec454df6",
+   "size": 32134
   },
   "js/ContentProfile.js": {
-   "sha512": "9a780805b9b86aa91b0681506161544fd156abecd55bcad305fc0250b6e40384",
-   "size": 12653
+   "sha512": "4fdb000959f571435bd8a910c4c21bfe6e305b2370f2b5c02c2e4de6c7a09d96",
+   "size": 14263
+  },
+  "js/ContentSettings.js": {
+   "sha512": "92c3b39f22603db6c2983b5da502aa45fca88e8f2cf6b210869f6d5aeac27696",
+   "size": 8195
+  },
+  "js/ContentThread.js": {
+   "sha512": "420a33058b51a654bab416b3604ae62d7c4ad1e24ba17d2f30f2f4723dbed0a2",
+   "size": 5023
   },
   "js/ContentUsers.js": {
-   "sha512": "8b780f4cf8df8fb25ac029aef62f660b96e938012d9526c6a7dea1f3f68bac9c",
-   "size": 5377
+   "sha512": "4a3a9f3cdd6fca1b7f4af2ec9962e36527996e2f079e4fe1b784ba70a5c267be",
+   "size": 5437
   },
   "js/EpixPost.js": {
-   "sha512": "07e39f361dcf002655c47fd7dd5ab40362b95e6c1557125ed4a1c27b3cc7a01e",
-   "size": 19407
+   "sha512": "47918869c8a9c572cea2e7896bf2f4abbcfde9028f4a091d22c66d087eb53751",
+   "size": 21427
   },
-  "js/Head.js": {
-   "sha512": "a0f5f556e35ac90bdcaca5f5e3ff06ce888fc895e57629f21933415576a337ee",
-   "size": 6588
+  "js/Onboarding.js": {
+   "sha512": "6771e3e7cd55790ff83ad896b8d48971993f2d8207675614d2be2ed17371065b",
+   "size": 6075
   },
   "js/Post.js": {
-   "sha512": "ab48d540bcabbdd822f8c9dbd0db892e397e601e01ab9c3168836af621f7fa1c",
-   "size": 15608
+   "sha512": "1f14da09db00c774789dc91b241d6e5e3d6e29f604e0ec8eeec1f1c29fe527f1",
+   "size": 27857
   },
   "js/PostCreate.js": {
-   "sha512": "09a25b3c50da94cb131b67d981ad13a822e759d04bf928f70c756e93b3109450",
-   "size": 4513
+   "sha512": "d9f8fb40f42913969f42cd34b2754bdf5b529002cbcc07f6526da6a4aae9c81c",
+   "size": 2028
   },
   "js/PostList.js": {
-   "sha512": "49c7ebd5323aae44b7535f963b2b7c628524f2340ea3ad64352977b941d602ba",
-   "size": 6196
+   "sha512": "1e41d24527c819a22c8da1a80a505b7df6499be51fe701b6d189054e7e0b8939",
+   "size": 8066
   },
   "js/PostMeta.js": {
-   "sha512": "297bdcb97984fa2494c72a43b8460a87be4a9b34be915a4785ceacc1c1ed9116",
-   "size": 6188
+   "sha512": "88510604eb52e3c2b6e14f82da092ba63520fdd2baed0105b8225cd8ecacefbe",
+   "size": 8082
   },
-  "js/Trigger.js": {
-   "sha512": "43a3f895d6d0bc8ab72296759e4249c86d43a14a113d2bd33b525fce4f59b864",
-   "size": 765
+  "js/Shell.js": {
+   "sha512": "9940165119a57b47a687b0e6cf95c338badf7be50e5ad42ca6db85848a600658",
+   "size": 11195
   },
   "js/User.js": {
-   "sha512": "69ea945fd448ee05d50c1aaadb251838b59f7c5ebead9dca65e00ce4265ae7b4",
-   "size": 17831
+   "sha512": "b71cc50440494547e6b954b90829b3cda2244704a47abb39d36f2da9b96ac7d9",
+   "size": 19661
   },
   "js/UserList.js": {
-   "sha512": "4b990ee78ea23722209592e0053689c42ad2e4b40a0142e3ffbe40927dd59d54",
-   "size": 5423
+   "sha512": "ff198510fb1f89c7c220f3f3607e120ce71845db9f3ab7b70b0911e5f14c638a",
+   "size": 5395
   },
   "js/lib/anime.min.js": {
    "sha512": "6efe3acb31bd1c46798e83d830a05c27db5d0cae46a333c69decd9a6a4b87c9e",
@@ -132,8 +128,8 @@
    "size": 267
   },
   "js/lib/epixframe.js": {
-   "sha512": "8cb66604615c662afc621127a3ab534d23323ad4bbfe068d9dae7a62fba73ae9",
-   "size": 18957
+   "sha512": "a360beb5f4d0d2d44bb4b828950a145a6c96b5a0394eb16a81beb179cd8fbcf0",
+   "size": 18860
   },
   "js/lib/maquette.js": {
    "sha512": "1c505fd93468808b55f4118800a17df0447dffa98585350da90051bc56d6e4ee",
@@ -166,6 +162,10 @@
   "js/utils/Editable.js": {
    "sha512": "3b9da06fd54f57117afc28c752d24ea3ebcfc6132581245b4aa946e00bd88d4f",
    "size": 2597
+  },
+  "js/utils/HubActions.js": {
+   "sha512": "953cd59fa373693a06f5777095e2117e2f0fcd47f24b0d61d1acfcd99b95ed03",
+   "size": 4841
   },
   "js/utils/ImagePreview.js": {
    "sha512": "a03d024e74c11130b4f4666936e1bc27dfb572bd3ff101f6281ee95593e2a11d",
@@ -204,8 +204,8 @@
    "size": 973
   },
   "js/utils/Text.js": {
-   "sha512": "e9e7af6f4f81d1e67d3d611ffe88095ea530517de792946411e259f3afabcdd3",
-   "size": 6775
+   "sha512": "16af5c8befe59cab5433a1e171f2a449f036c6972d30b9b78d0601e1438d393f",
+   "size": 6778
   },
   "js/utils/Time.js": {
    "sha512": "c9ea66155d77132f96cbd7b67acb34b857cb5daa70d0a4f75c1a576aa04f4340",
@@ -216,55 +216,55 @@
    "size": 684
   },
   "js/utils/Uploadable.js": {
-   "sha512": "69d2f4e9adddefa4e210bf6f2677a0c92211753e6acd59b19b01aaa85627f73f",
-   "size": 6060
+   "sha512": "e54b1d361eb6c8476bfd61d2000c7bff9487f0083ab01c4d584184bf4657c2e8",
+   "size": 5814
   },
   "languages/da.json": {
-   "sha512": "2b990a733c0984738ce71f30d84d339662b09b5e331e36f6df606271a158fdf2",
-   "size": 3049
+   "sha512": "82e308f77a9330c3e8bb754272b9d1fe317de09940a62e35ed9b559ee0101618",
+   "size": 8813
   },
   "languages/fa.json": {
-   "sha512": "10cd4ea7fabbacc1cdb31f896f677d9298fa659a80a1830cbf18d1371e7ed362",
-   "size": 4319
+   "sha512": "43d8d2dde94b73c27926c0669e1b5cc248600019739d631932e9b5ddb08fed9a",
+   "size": 11856
   },
   "languages/fr.json": {
-   "sha512": "0b2ee0fbb5b5855af16abfec5bb10bda93a6731588b5753b6ee57e54515235c2",
-   "size": 3378
+   "sha512": "1fba03d1e83a2ec4abd07aed133383db62cae2f16c7cdf7f5f2d4e6b5288e96a",
+   "size": 9693
   },
   "languages/hu.json": {
-   "sha512": "530ed64b0425a4bd90f9a3b5de6965f3d944b8dbc64cac71c10d81d5484b052d",
-   "size": 3306
+   "sha512": "d4f1409ea36a41c53a64e6cc20d7f1250891162c6a8c5b46d4722807bc79c47e",
+   "size": 9631
   },
   "languages/it.json": {
-   "sha512": "69dd8f1615ceedcb1b7e5c47dd1269ce6c5eda925f1bb165bcafabcd8f506449",
-   "size": 3286
+   "sha512": "4547e6c468bd5b622865337cbefc8bdf92ef4862cff9fa6d4f9a5e7778c32ddf",
+   "size": 9150
   },
   "languages/nl.json": {
-   "sha512": "bb00fe7208a726cceb5527d775ae0f0ebaf48fac310389775ececc9589a82e75",
-   "size": 3473
+   "sha512": "32dfb19d9fb55a9dddd525508acc061ef89ae7317559a7c30956289fd21b188b",
+   "size": 9205
   },
   "languages/pt-br.json": {
-   "sha512": "0b899d7348a36e81384e0de7e249934d110b9fe7d8eeb57ae51d9777c43e75d2",
-   "size": 3424
+   "sha512": "a1bce964b7b8ac15a7479fc4343c0196aa9313330de66e03370bb17541f4a839",
+   "size": 9217
   },
   "languages/sk.json": {
-   "sha512": "f50a43878f40c091c690be8212919a4d8033d06562f2f5c3a42c8d835c93eb0f",
-   "size": 3528
+   "sha512": "417c7fbcd1e022417b3204402c73fa6e9d428bf4406adbdd6f0baa1ff88cb166",
+   "size": 9509
   },
   "languages/tr.json": {
-   "sha512": "66d2577d7d37b7e6dd797f06468689d9942f051230c7274e19f321b43bf6e6ac",
-   "size": 3356
+   "sha512": "8fc1f7a5c4ef8f5f7dccd586e44ce589bc81b2626870b45b996d10296ca85302",
+   "size": 9390
   },
   "languages/zh-tw.json": {
-   "sha512": "0a8c4a1c4f219b168cce8b493d06cd8941380bbc1bd62edebf9041485941dc0b",
-   "size": 3333
+   "sha512": "27176cc47562b277faa073c111406892ef3c96a4a678318142bb9ffab1d8931f",
+   "size": 8749
   },
   "languages/zh.json": {
-   "sha512": "f9c2eb97b0e48dd2da0d772ebfe5fe4908a4df14a6d92de7d38ec11e3ee5d460",
-   "size": 3353
+   "sha512": "bb9841f1c19ff3fd979c6d6b9571ec1e31c7b2371a0d464d9b7bce94633d9d58",
+   "size": 8707
   }
  },
- "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|.*\\.coffee|js/all\\.js|\\.git)",
+ "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|hub-xite/.*|\\.git)",
  "inner_path": "content.json",
  "modified": 1775060163,
  "postmessage_nonce_security": true,
@@ -277,9 +277,36 @@
   }
  },
  "signers_sign": "HL3T+I7ncGYH/A5YXm0iKd6JHRWGrCDu+u0/z+n/R9XEB/Oo8Lz9oxN3nG5L0OJ7XMZFs1OmuSsvhTW7YlL/ODY=",
- "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HOiMmeMseoviP6sCOXfEfE1eNFZPWo+RM5x1tNjuoK0wPMtHYtpfBMEcR4/P8YxhIqrdg38gfRAoRlCKRKMqvPs="},
+ "signs": {
+  "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HOiMmeMseoviP6sCOXfEfE1eNFZPWo+RM5x1tNjuoK0wPMtHYtpfBMEcR4/P8YxhIqrdg38gfRAoRlCKRKMqvPs="
+ },
  "signs_required": 1,
  "title": "Epix Post",
- "translate": ["js/EpixPost.js","js/Head.js","js/User.js","js/Post.js","js/PostCreate.js","js/PostList.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentCreateProfile.js","js/ContentUsers.js","js/ActivityList.js","js/UserList.js","js/utils/Text.js","js/utils/Translate.js"],
- "viewport": "width=device-width, initial-scale=0.8"
+ "translate": [
+  "index.html",
+  "js/EpixPost.js",
+  "js/Shell.js",
+  "js/Onboarding.js",
+  "js/ComposerModal.js",
+  "js/User.js",
+  "js/Post.js",
+  "js/PostCreate.js",
+  "js/PostList.js",
+  "js/PostMeta.js",
+  "js/ContentFeed.js",
+  "js/ContentProfile.js",
+  "js/ContentCreateProfile.js",
+  "js/ContentUsers.js",
+  "js/ContentHubs.js",
+  "js/ContentThread.js",
+  "js/ContentSettings.js",
+  "js/ActivityList.js",
+  "js/UserList.js",
+  "js/utils/Text.js",
+  "js/utils/Translate.js",
+  "js/utils/HubActions.js",
+  "js/AnonUser.js",
+  "js/utils/Uploadable.js"
+ ],
+ "viewport": "width=device-width, initial-scale=1"
 }

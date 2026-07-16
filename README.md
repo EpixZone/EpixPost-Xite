@@ -23,29 +23,31 @@ epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm/
 ├── dbschema.json          # EpixPost DB (v3, merger)
 ├── LICENSE                # MIT
 ├── css/
-│   └── all.css            # Bundled stylesheet
+│   └── all.css            # Stylesheet (flat theme, light/dark)
+├── img/                   # Logo, favicon, default avatar
 ├── js/
 │   ├── EpixPost.js        # Main app (extends EpixFrame)
+│   ├── Shell.js           # App shell: navigation, account menu
+│   ├── Onboarding.js      # First-run steps
 │   ├── Post.js            # Post component
-│   ├── PostCreate.js      # Post creation
+│   ├── PostCreate.js      # Composer teaser on the feed
 │   ├── PostList.js        # Post feed
-│   ├── PostMeta.js        # Post metadata
+│   ├── PostMeta.js        # Post images
+│   ├── ComposerModal.js   # Shared post composer
 │   ├── User.js            # User profiles and auth
 │   ├── UserList.js        # User directory
-│   ├── Head.js            # Navigation header
 │   ├── ContentFeed.js     # Feed view
+│   ├── ContentThread.js   # Post thread view
 │   ├── ContentProfile.js  # Profile view
 │   ├── ContentCreateProfile.js
 │   ├── ContentUsers.js    # Users browse
+│   ├── ContentHubs.js     # Hub management
+│   ├── ContentSettings.js # Settings
 │   ├── ActivityList.js    # Activity feed
 │   ├── AnonUser.js        # Anonymous user fallback
-│   ├── Trigger.js         # Notifications
 │   ├── lib/               # Maquette, EpixFrame, marked, anime, clone
 │   └── utils/             # Animation, Deferred, Text, Time, Menu, etc.
-├── languages/             # da, fa, fr, hu, it, nl, pt-br, sk, tr, zh, zh-tw
-└── data-default/
-    └── users/
-        └── content-default.json
+└── languages/             # da, fa, fr, hu, it, nl, pt-br, sk, tr, zh, zh-tw
 ```
 
 ## Hub
@@ -56,7 +58,7 @@ epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm/
 ## Database
 
 - **File:** `merged-EpixPost/EpixPost.db`
-- **Tables:** `post`, `post_like`, `comment`, `follow`, `user`, `json`
+- **Tables:** `post`, `post_like`, `comment`, `follow`, `json`
 
 ## Tech Stack
 

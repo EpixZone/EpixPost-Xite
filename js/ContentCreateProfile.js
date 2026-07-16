@@ -46,7 +46,7 @@
         if (hub_name == null) {
           hub_name = Page.user.hub;
         }
-        return Page.cmd("wrapperConfirm", ["You already have profile on hub <b>" + hub_name + "</b>,<br>are you sure you want to create a new one?", "Create new profile"], () => {
+        return Page.cmd("wrapperConfirm", [_("You already have a profile on hub") + " <b>" + hub_name + "</b>.<br>" + _("Are you sure you want to create a new one?"), _("Create new profile")], () => {
           return this.joinHub(hub_address);
         });
       } else {
@@ -55,29 +55,16 @@
     }
 
     joinHub(hub) {
-      var user = new User({
-        hub: hub,
-        auth_address: Page.site_info.auth_address
-      });
-      this.creation_status.push("Checking user on selected hub...");
-      Page.cmd("fileGet", {
-        "inner_path": user.getPath() + "/content.json",
-        "required": false
-      }, (found) => {
-        if (found) {
-          Page.cmd("wrapperNotification", ["error", "User " + Page.site_info.cert_user_id + " already exists on this hub"]);
-          this.creation_status = [];
-          return;
+      HubActions.joinHub(hub, ((status) => {
+        this.creation_status.push(status);
+        Page.projector.scheduleRender();
+      }), ((ok) => {
+        this.creation_status = [];
+        if (ok) {
+          Page.setUrl("?Home");
         }
-        var data = user.getDefaultData();
-        data.hub = hub;
-        this.creation_status.push("Creating new profile...");
-        return user.save(data, hub, () => {
-          this.creation_status = [];
-          Page.checkUser();
-          return Page.setUrl("?Home");
-        });
-      });
+        Page.projector.scheduleRender();
+      }));
       return false;
     }
 
@@ -95,9 +82,6 @@
           var hubs = [];
           for (var address in sites) {
             var site = sites[address];
-            if (address === Page.userdb) {
-              continue;
-            }
             site["users"] = site_users[site.address] || [];
             hubs.push(site);
           }
@@ -131,11 +115,11 @@
           href: "#Download:" + hub.address,
           address: hub.address,
           onclick: this.handleDownloadClick
-        }, "Download") : h("a.button.button-join", {
+        }, _("Download")) : h("a.button.button-join.button-submit", {
           href: "#Join:" + hub.address,
           address: hub.address,
           onclick: this.handleJoinClick
-        }, "Join!"), h("div.avatars", [
+        }, _("Join")), h("div.avatars", [
           hub.users.map((user) => {
             if ((user.avatar !== "jpg" && user.avatar !== "png") || rendered >= 4) {
               return "";
@@ -174,10 +158,10 @@
         this.need_update = false;
       }
       return h("div#Content.center.content-signup", [
-        h("h1", "Create new profile"), h("a.button.button-submit.button-certselect.certselect", {
+        h("h1", _("Create new profile")), h("a.button.button-submit.button-certselect.certselect", {
           href: "#Select+user",
           onclick: this.handleSelectUserClick
-        }, [h("div.icon.icon-profile"), (Page.site_info != null ? Page.site_info.cert_user_id : void 0) ? "As: " + Page.site_info.cert_user_id : "Select ID..."]), this.creation_status.length > 0 ? h("div.creation-status", {
+        }, [h("div.icon.icon-profile"), (Page.site_info != null ? Page.site_info.cert_user_id : void 0) ? _("As:") + " " + Page.site_info.cert_user_id : _("Select ID...")]), this.creation_status.length > 0 ? h("div.creation-status", {
           enterAnimation: Animation.slideDown,
           exitAnimation: Animation.slideUp
         }, [
@@ -195,10 +179,10 @@
           this.hubs.length ? h("div.hubselect.seeded", {
             enterAnimation: Animation.slideDown,
             exitAnimation: Animation.slideUp
-          }, [h("h2", "Seeded HUBs"), this.renderSeededHubs()]) : void 0, this.default_hubs.length ? h("div.hubselect.default", {
+          }, [h("h2", _("Seeded hubs")), this.renderSeededHubs()]) : void 0, this.default_hubs.length ? h("div.hubselect.default", {
             enterAnimation: Animation.slideDown,
             exitAnimation: Animation.slideUp
-          }, [h("h2", "Available HUBs"), this.renderDefaultHubs()]) : void 0, h("h5", "(With this you choose where is your profile stored. There is no difference on content and you will able to reach all users from any hub)")
+          }, [h("h2", _("Available hubs")), this.renderDefaultHubs()]) : void 0, h("h5", _("The hub only decides where your profile is stored. You can reach every user from any hub."))
         ]) : void 0
       ]);
     }
