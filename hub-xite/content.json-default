@@ -1,0 +1,17 @@
+{
+ "address": "",
+ "admin_xid": "",
+ "cloneable": true,
+ "description": "",
+ "epixnet_version": "0.0.3",
+ "ignore": "",
+ "includes": {
+  "data/users/content.json": {
+   "signers_required": 1
+  }
+ },
+ "merged_type": "EpixPost",
+ "postmessage_nonce_security": true,
+ "signs_required": 1,
+ "title": "Epix Post Hub"
+}

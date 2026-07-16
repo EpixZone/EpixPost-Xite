@@ -6,13 +6,10 @@
       this.resizeImage = this.resizeImage.bind(this);
       this.handleUploadClick = this.handleUploadClick.bind(this);
       this.render = this.render.bind(this);
-      this.getPixelData = this.getPixelData.bind(this);
       this.node = null;
       this.resize_width = 50;
       this.resize_height = 50;
       this.preverse_ratio = true;
-      this.try_png = false;
-      this.png_limit = 2200;
       this.image_preview = new ImagePreview();
       this.pixel_chars = this.image_preview.pixel_chars;
     }
@@ -46,29 +43,13 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         while (image.width > width * 2) { image = this.scaleHalf(image); }
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        var image_base64uri;
-        if (this.try_png) {
-          var quant = new RgbQuant({ colors: 128, method: 1 });
-          quant.sample(canvas);
-          quant.palette(true);
-          var canvas_quant = drawPixels(quant.reduce(canvas), width);
-          var optimizer = new CanvasTool.PngEncoder(canvas_quant, {
-            bitDepth: 8, colourType: CanvasTool.PngEncoder.ColourType.TRUECOLOR
-          });
-          image_base64uri = "data:image/png;base64," + btoa(optimizer.convert());
-          if (image_base64uri.length > this.png_limit) {
-            this.log("PNG too large (" + image_base64uri.length + " bytes), convert to jpg instead");
-            image_base64uri = canvas.toDataURL("image/jpeg", 0.8);
-          }
-        } else {
-          image_base64uri = canvas.toDataURL("image/jpeg", 0.8);
-        }
+        var image_base64uri = canvas.toDataURL("image/jpeg", 0.8);
         this.log("Size: " + image_base64uri.length + " bytes");
         cb(image_base64uri, canvas.width, canvas.height);
       };
       image.onerror = (e) => {
         this.log("Image upload error", e);
-        Page.cmd("wrapperNotification", ["error", "Invalid image, only jpg format supported"]);
+        Page.cmd("wrapperNotification", ["error", _("Invalid image, only jpg format supported")]);
         cb(null);
       };
       if (file.name) {
@@ -80,9 +61,6 @@
 
     handleUploadClick(e) {
       this.log("handleUploadClick", e);
-      var script = document.createElement("script");
-      script.src = "js-external/pngencoder.js";
-      document.head.appendChild(script);
       var input = document.createElement('input');
       document.body.appendChild(input);
       input.type = "file";
@@ -106,25 +84,46 @@
       );
     }
 
-    getPixelData(data) {
-      var color_db = {};
-      var colors = [];
-      var colors_next_id = 0;
-      var pixels = [];
+    // Quantize RGBA pixel data to at most max_colors colors (4 bit per
+    // channel, most frequent colors kept, the rest mapped to the nearest
+    // palette entry). Replaces the old pngencoder.js RgbQuant dependency.
+    // Returns [palette hex triplets, pixel chars] in the ImagePreview format.
+    quantizePixels(data, max_colors) {
+      var counts = {};
+      var rounded = [];
       for (var i = 0; i <= data.length - 1; i += 4) {
         var r = Math.round(data[i] / 17);
         var g = Math.round(data[i + 1] / 17);
         var b = Math.round(data[i + 2] / 17);
         var hex = Number(0x1000 + r * 0x100 + g * 0x10 + b).toString(16).substring(1);
-        if (i === 0) this.log(r, g, b, data[i + 3], hex);
-        if (!color_db[hex]) {
-          color_db[hex] = this.pixel_chars[colors_next_id];
-          colors.push(hex);
-          colors_next_id += 1;
-        }
-        pixels.push(color_db[hex]);
+        rounded.push(hex);
+        counts[hex] = (counts[hex] || 0) + 1;
       }
-      return [colors, pixels];
+      var palette = Object.keys(counts).sort(function(a, b) {
+        return counts[b] - counts[a];
+      }).slice(0, max_colors);
+      var nearest = {};
+      var pixels = [];
+      for (var k = 0; k < rounded.length; k++) {
+        var hex2 = rounded[k];
+        if (nearest[hex2] == null) {
+          var best = 0;
+          var best_dist = Infinity;
+          for (var j = 0; j < palette.length; j++) {
+            var dr = parseInt(hex2[0], 16) - parseInt(palette[j][0], 16);
+            var dg = parseInt(hex2[1], 16) - parseInt(palette[j][1], 16);
+            var db = parseInt(hex2[2], 16) - parseInt(palette[j][2], 16);
+            var dist = dr * dr + dg * dg + db * db;
+            if (dist < best_dist) {
+              best_dist = dist;
+              best = j;
+            }
+          }
+          nearest[hex2] = best;
+        }
+        pixels.push(this.pixel_chars[nearest[hex2]]);
+      }
+      return [palette, pixels];
     }
 
     getPreviewData(image_base64uri, target_width, target_height, cb) {
@@ -142,13 +141,8 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         while (image.width > target_width * 2) { image = this.scaleHalf(image); }
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        var quant = new RgbQuant({ colors: 16, method: 1 });
-        quant.sample(canvas);
-        quant.palette(true);
-        canvas = drawPixels(quant.reduce(canvas), canvas.width);
-        ctx = canvas.getContext("2d");
         var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var pixeldata = this.getPixelData(image_data.data);
+        var pixeldata = this.quantizePixels(image_data.data, 16);
         var back = [image_width, image_height, pixeldata[0].join(""), pixeldata[1].join("")].join(",");
         this.log("Previewdata size:", back.length);
         cb(back);

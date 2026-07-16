@@ -288,7 +288,6 @@
     xidResolve(address) { return this.cmd('xidResolve', { address: address }); }
     xidResolveName(name) { return this.cmd('xidResolveName', { name: name }); }
     xidResolveBatch(addresses) { return this.cmd('xidResolveBatch', { addresses: addresses }); }
-    xidResolveIdentity(address) { return this.cmd('xidResolveIdentity', { address: address }); }
     xidResolveSite(site) { return this.cmd('xidResolveSite', { site: site }); }
 
     // ---------------------------------------------------------------------------

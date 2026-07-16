@@ -102,7 +102,7 @@
     }
 
     formatUsername(username) {
-      if (!username) return "Anonymous";
+      if (!username) return _("Anonymous");
       if (username.match(/^epix1[a-z0-9]{38,}$/)) {
         return username.substring(0, 16) + "...";
       }

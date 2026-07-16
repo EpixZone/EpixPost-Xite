@@ -5,6 +5,8 @@
  <title>Epix Post</title>
  <meta charset="utf-8">
  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="icon" href="img/favicon.ico">
  <link rel="stylesheet" href="css/all.css?v={site_modified}" />
  <base href="" target="_top" id="base">
  <script>base.href = document.location.href.replace("/media", "").replace("index.html", "").replace(/[&?]wrapper=False/, "").replace(/[&?]wrapper_nonce=[A-Za-z0-9]+/, "")</script>
@@ -13,12 +15,21 @@
 
 <div id="Overlay"></div>
 
-<div class="head-container">
- <div id="Head"></div>
- <div id="Trigger" class="trigger-off"></div>
+<!-- Loading Progress -->
+<div class="loading-overlay" id="loading-overlay">
+ <div class="loading-box">
+  <img src="img/logo.svg" class="loading-logo" alt="">
+  <div class="loading-title">Epix Post</div>
+  <div class="loading-bar-track">
+   <div class="loading-bar-fill" id="loading-bar-fill"></div>
+  </div>
+  <div class="loading-step" id="loading-step">Connecting...</div>
+ </div>
 </div>
 
-<div class="center" id="Content">
+<div id="App">
+ <div id="Shell"></div>
+ <div id="Content"></div>
 </div>
 
 <!-- Libraries -->
@@ -48,6 +59,7 @@
 <script type="text/javascript" src="js/utils/Overlay.js"></script>
 <script type="text/javascript" src="js/utils/Scrollwatcher.js"></script>
 <script type="text/javascript" src="js/utils/Uploadable.js"></script>
+<script type="text/javascript" src="js/utils/HubActions.js"></script>
 
 <!-- App modules -->
 <script type="text/javascript" src="js/AnonUser.js"></script>
@@ -55,15 +67,19 @@
 <script type="text/javascript" src="js/UserList.js"></script>
 <script type="text/javascript" src="js/PostMeta.js"></script>
 <script type="text/javascript" src="js/PostCreate.js"></script>
+<script type="text/javascript" src="js/ComposerModal.js"></script>
 <script type="text/javascript" src="js/Post.js"></script>
 <script type="text/javascript" src="js/PostList.js"></script>
 <script type="text/javascript" src="js/ActivityList.js"></script>
-<script type="text/javascript" src="js/Trigger.js"></script>
-<script type="text/javascript" src="js/Head.js"></script>
+<script type="text/javascript" src="js/Shell.js"></script>
+<script type="text/javascript" src="js/Onboarding.js"></script>
 <script type="text/javascript" src="js/ContentCreateProfile.js"></script>
 <script type="text/javascript" src="js/ContentFeed.js"></script>
 <script type="text/javascript" src="js/ContentProfile.js"></script>
+<script type="text/javascript" src="js/ContentThread.js"></script>
 <script type="text/javascript" src="js/ContentUsers.js"></script>
+<script type="text/javascript" src="js/ContentHubs.js"></script>
+<script type="text/javascript" src="js/ContentSettings.js"></script>
 <script type="text/javascript" src="js/EpixPost.js"></script>
 
 </body>

@@ -49,7 +49,7 @@
           row = rows[i];
           if (row.json_cert_user_id) {
             row.cert_user_id = row.json_cert_user_id;
-            row.auth_address = row.json_directory.replace("data/userdb/", "").replace("data/users/", "");
+            row.auth_address = row.json_directory.replace("data/users/", "");
           }
           if (!row.auth_address) {
             continue;
@@ -82,6 +82,7 @@
     }
 
     render(type) {
+      var classname;
       if (type == null) {
         type = "normal";
       }
@@ -94,10 +95,17 @@
       if (!this.users.length) {
         return null;
       }
-      return h("div.UserList.users" + type + "." + this.type, {
+      // "grid" gets its own class (.users.grid card grid); other callers pass
+      // a class suffix directly (".gray") or the plain list default.
+      if (type === "grid") {
+        classname = ".grid";
+      } else {
+        classname = type;
+      }
+      return h("div.UserList.users" + classname + "." + this.type, {
         afterCreate: Animation.show
       }, this.users.map((user) => {
-        return user.renderList(type);
+        return user.renderList(type, this.type);
       }));
     }
   }

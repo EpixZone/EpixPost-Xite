@@ -8,6 +8,7 @@
       this.resolveAndFinish = this.resolveAndFinish.bind(this);
       this.hasUserIdentity = this.hasUserIdentity.bind(this);
       this.handleEditProfileClick = this.handleEditProfileClick.bind(this);
+      this.handleProfileMenuClick = this.handleProfileMenuClick.bind(this);
       this.filter = this.filter.bind(this);
       this.findUser = this.findUser.bind(this);
       this.setUser = this.setUser.bind(this);
@@ -19,8 +20,10 @@
       this.auth_address = null;
       this.user = new User();
       this.activity_list = new ActivityList();
+      this.menu = new Menu();
       this.owned = false;
       this.need_update = true;
+      this.noanim = false;
       this.filter_post_id = null;
       this.loaded = false;
       this.follower_count = 0;
@@ -35,28 +38,88 @@
             h("div.user.card.profile", [
               this.user.renderAvatar(), h("a.name.link", {
                 href: this.user.getLink(),
-                style: "color: " + (Text.toColor(this.user.row.auth_address)),
                 onclick: Page.handleLinkClick
-              }, this.user.getDisplayName()), h("div.cert_user_id", this.user.getDisplayName()), h("div.intro-full", this.user.getDisplayIntro()), h("div.follow-container", [
+              }, this.user.getDisplayName()), h("div.cert_user_id", this.getHandle()), h("div.intro-full", this.user.getDisplayIntro()), h("div.follow-container", [
                 h("a.button.button-follow-big", {
                   href: "#",
                   onclick: this.user.handleFollowClick,
                   classes: {
                     loading: this.user.submitting_follow
                   }
-                }, h("span.icon-follow", "+"), this.user.isFollowed() ? "Unfollow" : "Follow")
+                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow"))
               ])
             ])
           ])
-        ]), h("div.col-center", {
-          style: "padding-top: 30px; text-align: center"
-        }, [
-          h("h1", "Download profile site"), h("h2", "User's profile site not loaded to your client yet."), h("a.button.submit", {
-            href: "#Add+site",
-            onclick: this.user.handleDownloadClick
-          }, "Download user's site")
+        ]), h("div.col-center", [
+          h("div.post-list-empty.thread-notseeded", [
+            h("h2", _("This user's profile is on a hub you don't seed yet")),
+            h("p", _("Download the hub to see their posts.")),
+            h("a.button.button-submit", {
+              href: "#Add+site",
+              onclick: this.user.handleDownloadClick
+            }, _("Download hub"))
+          ])
         ])
       ]);
+    }
+
+    // Short second line under the display name: the cert id, or a truncated
+    // address when there is no cert.
+    getHandle() {
+      var ref;
+      var cert = (ref = this.user.row) != null ? ref.cert_user_id : void 0;
+      if (cert) {
+        return cert;
+      }
+      if (this.auth_address && this.auth_address.length > 24) {
+        return this.auth_address.slice(0, 14) + "..." + this.auth_address.slice(-6);
+      }
+      return this.auth_address || "";
+    }
+
+    // One stable handler for the profile card kebab; items are decided at
+    // click time.
+    handleProfileMenuClick() {
+      this.menu.items = [];
+      if (!this.owned) {
+        this.menu.items.push([_("Mute user"), this.user.handleMuteClick]);
+      }
+      this.menu.items.push([
+        _("Copy profile link"), (() => {
+          this.copyProfileLink();
+          return false;
+        })
+      ]);
+      this.menu.toggle();
+      return false;
+    }
+
+    copyProfileLink() {
+      var link = "/" + Page.address + "/" + this.user.getLink();
+      var notify = function() {
+        Page.cmd("wrapperNotification", ["done", _("Link copied"), 3000]);
+      };
+      var fallback = function() {
+        var field = document.createElement("textarea");
+        field.value = link;
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.focus();
+        field.select();
+        try {
+          document.execCommand("copy");
+          notify();
+        } catch (err) {
+          Page.cmd("wrapperNotification", ["error", _("Copy failed")]);
+        }
+        field.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(notify, fallback);
+      } else {
+        fallback();
+      }
     }
 
     getUserDir() {
@@ -96,7 +159,7 @@
 
     findUser(user_name, cb) {
       var query;
-      query = "SELECT\n json.cert_user_id,\n REPLACE(REPLACE(json.directory, 'data/userdb/', ''), 'data/users/', '') AS auth_address,\n COALESCE(json.hub, json.site) AS hub,\n json.user_name,\n json.avatar,\n json.intro\nFROM\n json\nWHERE json.user_name = :user_name AND json.directory LIKE 'data/users/%'\nORDER BY json.json_id DESC LIMIT 1";
+      query = "SELECT\n json.cert_user_id,\n REPLACE(json.directory, 'data/users/', '') AS auth_address,\n COALESCE(json.hub, json.site) AS hub,\n json.user_name,\n json.avatar,\n json.intro\nFROM\n json\nWHERE json.user_name = :user_name AND json.directory LIKE 'data/users/%'\nORDER BY json.json_id DESC LIMIT 1";
       return Page.cmd("dbQuery", [
         query, {
           user_name: user_name
@@ -116,15 +179,17 @@
     }
 
     handleEditProfileClick() {
-      var xid_site;
-      xid_site = "epix1xauthduuyn63k6kj54jzgp4l8nnjlhrsyaku8c";
-      Page.cmd("wrapperOpenWindow", ["/" + xid_site + "/"]);
+      Page.cmd("wrapperOpenWindow", ["/" + Page.xid_site + "/"]);
       return false;
     }
 
     hasUserIdentity() {
-      var ref, ref1, ref2, ref3;
-      return ((ref = this.user) != null ? (ref1 = ref.row) != null ? ref1.cert_user_id : void 0 : void 0) || ((ref2 = this.user) != null ? (ref3 = ref2.xid_profile) != null ? ref3.name : void 0 : void 0);
+      var row = (this.user != null ? this.user.row : void 0) || {};
+      var xid = this.user != null ? this.user.xid_profile : void 0;
+      // A data.json row can land before its content.json (no cert columns
+      // yet); any real db row (json_id) is enough to render the page. The
+      // not-found fallback synthesizes a row without one.
+      return !!(row.cert_user_id || row.user_name || row.json_id || (xid != null ? xid.name : void 0));
     }
 
     resolveAndFinish() {
@@ -172,6 +237,8 @@
       if (this.need_update) {
         this.log("Updating");
         this.need_update = false;
+        this.post_list.noanim = this.noanim;
+        this.activity_list.noanim = this.noanim;
         this.post_list.filter_post_ids = this.filter_post_id ? [this.filter_post_id] : null;
         if ((ref = this.post_list) != null) {
           ref.need_update = true;
@@ -188,45 +255,31 @@
         this.user.auth_address = this.auth_address;
         this.user.hub = this.hub;
         this.user.get(this.hub, this.auth_address, (res) => {
-          var ref3;
+          var base, ref3;
           if (res) {
             this.owned = this.user.auth_address === ((ref3 = Page.user) != null ? ref3.auth_address : void 0);
             if (this.owned && !this.post_create) {
               this.post_create = new PostCreate();
             }
-            return this.resolveAndFinish();
           } else {
-            return Page.queryUserdb(this.auth_address, (row) => {
-              var base, ref4;
-              this.log("UserDb row", row);
-              if (row) {
-                this.user.setRow(row);
-              } else {
-                if ((base = this.user).row == null) {
-                  base.row = {};
-                }
-                this.user.row.auth_address = this.auth_address;
-                this.user.row.hub = this.hub;
-                this.owned = this.auth_address === ((ref4 = Page.user) != null ? ref4.auth_address : void 0);
-                if (this.owned && !this.post_create) {
-                  this.post_create = new PostCreate();
-                }
-              }
-              return this.resolveAndFinish();
-            });
+            // No profile row in the db: keep a minimal row so the not-seeded
+            // card can render, or fall through to "User not found or muted".
+            if ((base = this.user).row == null) {
+              base.row = {};
+            }
+            this.user.row.auth_address = this.auth_address;
+            this.user.row.hub = this.hub;
+            this.owned = this.auth_address === ((ref3 = Page.user) != null ? ref3.auth_address : void 0);
+            if (this.owned && !this.post_create) {
+              this.post_create = new PostCreate();
+            }
           }
+          return this.resolveAndFinish();
         });
-        if (!Page.merged_sites[this.hub]) {
-          Page.queryUserdb(this.auth_address, (row) => {
-            this.user.setRow(row);
-            Page.projector.scheduleRender();
-            return this.loaded = true;
-          });
-        }
       }
       if (!this.hasUserIdentity()) {
         if (this.loaded) {
-          return h("div#Content.center." + this.auth_address, [h("div.user-notfound", "User not found or muted")]);
+          return h("div#Content.center." + this.auth_address, [h("div.user-notfound", _("User not found or muted"))]);
         } else {
           return h("div#Content.center." + this.auth_address, []);
         }
@@ -249,24 +302,30 @@
                 followed: this.user.isFollowed()
               }
             }, [
-              this.user.renderAvatar(), h("span.name.link", {
-                style: "color: " + (Text.toColor(this.user.row.auth_address))
-              }, h("a", {
+              h("a.icon.icon-kebab.profile-kebab", {
+                href: "#Menu",
+                title: _("More"),
+                onclick: Page.returnFalse,
+                onmousedown: this.handleProfileMenuClick
+              }), this.menu.render(".menu-right.menu-profile"),
+              this.user.renderAvatar(), h("span.name.link", h("a", {
                 href: this.user.getLink(),
-                style: "color: " + (Text.toColor(this.user.row.auth_address)),
                 onclick: Page.handleLinkClick
-              }, this.user.getDisplayName())), h("div.cert_user_id", this.user.getDisplayName()), h("div.intro-full", {
+              }, this.user.getDisplayName())), h("div.cert_user_id", this.getHandle()), h("div.intro-full", {
                 innerHTML: Text.renderMarked(this.user.getDisplayIntro())
-              }), h("div.profile-stats", [h("div.stat", [h("span.stat-value", "" + this.post_count), h("span.stat-label", "Posts")]), h("div.stat", [h("span.stat-value", "" + this.follower_count), h("span.stat-label", "Followers")]), h("div.stat", [h("span.stat-value", "" + this.following_count), h("span.stat-label", "Following")])]), h("div.follow-container", [
+              }), h("div.profile-stats", [h("div.stat", [h("span.stat-value", "" + this.post_count), h("span.stat-label", _("Posts"))]), h("div.stat", [h("span.stat-value", "" + this.follower_count), h("span.stat-label", _("Followers"))]), h("div.stat", [h("span.stat-value", "" + this.following_count), h("span.stat-label", _("Following"))])]), !this.owned ? h("div.follow-container", [
                 h("a.button.button-follow-big", {
                   href: "#",
-                  onclick: this.user.handleFollowClick
-                }, h("span.icon-follow", "+"), this.user.isFollowed() ? "Unfollow" : "Follow")
-              ]), this.owned ? h("a.button.button-edit-profile", {
+                  onclick: this.user.handleFollowClick,
+                  classes: {
+                    loading: this.user.submitting_follow
+                  }
+                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow"))
+              ]) : void 0, this.owned ? h("a.button.button-edit-profile", {
                 href: "#",
                 onclick: this.handleEditProfileClick
-              }, "Edit profile on xID") : void 0, this.owned && Page.user_hubs ? h("div.hub-management", [
-                h("h3.hub-management-title", "Linked Hubs"), (() => {
+              }, _("Edit profile on xID")) : void 0, this.owned && Page.user_hubs ? h("div.hub-management", [
+                h("h3.hub-management-title", _("Linked Hubs")), (() => {
                   var i, len, ref3, ref4, ref5, ref6, ref7, results;
                   ref3 = Object.keys(Page.user_hubs);
                   results = [];
@@ -275,18 +334,15 @@
                     hub_title = ((ref4 = Page.site_info.content) != null ? (ref5 = ref4.settings) != null ? (ref6 = ref5.default_hubs) != null ? (ref7 = ref6[hub_address]) != null ? ref7.title : void 0 : void 0 : void 0 : void 0) || hub_address.slice(0, 16) + "...";
                     results.push(h("div.hub-item", {
                       key: hub_address
-                    }, [h("span.hub-name", hub_title), h("span.hub-status", "Connected")]));
+                    }, [h("span.hub-name", hub_title), h("span.hub-status", _("Connected"))]));
                   }
                   return results;
                 })()
               ]) : void 0
             ])
-          ]), h("a.user-mute", {
-            href: "#Mute",
-            onclick: this.user.handleMuteClick
-          }, h("div.icon.icon-mute"), "Mute " + (this.user.getDisplayName())), this.activity_list.render(), this.user_list.users.length > 0 ? h("h2.sep", {
+          ]), this.activity_list.render(), this.user_list.users.length > 0 ? h("h2.sep", {
             afterCreate: Animation.show
-          }, ["Following"]) : void 0, this.user_list.render(".gray")
+          }, [_("Following")]) : void 0, this.user_list.render(".gray")
         ]), h("div.col-center", [
           this.owned && !this.filter_post_id ? h("div.post-create-container", {
             enterAnimation: Animation.slideDown,
@@ -296,10 +352,11 @@
       ]);
     }
 
-    update() {
+    update(mode) {
       if (!this.auth_address) {
         return;
       }
+      this.noanim = mode === "noanim";
       this.need_update = true;
       return Page.projector.scheduleRender();
     }

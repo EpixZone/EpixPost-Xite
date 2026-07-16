@@ -1,49 +1,122 @@
 (function() {
 
+  // Post image handling. The box is sized with CSS aspect-ratio from the
+  // preview data, so nothing shifts when the real image arrives. Flow when
+  // the image scrolls into view (data saver OFF): blurred preview ->
+  // optionalFileInfo -> swap to the real file if downloaded, otherwise
+  // fileNeed + "Downloading from peers..." until Image.onload swaps it
+  // (20s timeout -> tap to retry). Data saver ON: preview + "Show image".
   class PostMeta {
     constructor(post, meta) {
       this.post = post;
       this.meta = meta;
       this.afterCreateImage = this.afterCreateImage.bind(this);
+      this.startDownload = this.startDownload.bind(this);
+      this.loadFullsize = this.loadFullsize.bind(this);
       this.handleImageClick = this.handleImageClick.bind(this);
+      this.handleRetryClick = this.handleRetryClick.bind(this);
       this.handleOptionalHelpClick = this.handleOptionalHelpClick.bind(this);
       this.handleImageDeleteClick = this.handleImageDeleteClick.bind(this);
       this.handleImageSettingsClick = this.handleImageSettingsClick.bind(this);
       this.render = this.render.bind(this);
+      this.loading = false;
+      this.loaded = false;
+      this.failed = false;
+      this.download_timer = null;
+      this.retry_timer = null;
+    }
+
+    getImagePath() {
+      return this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg";
+    }
+
+    isDataSaver() {
+      var ref, ref1;
+      return !!((ref = Page.local_storage) != null ? (ref1 = ref.settings) != null ? ref1.data_saver : void 0 : void 0);
     }
 
     afterCreateImage(tag) {
       Page.scrollwatcher.add(tag, () => {
         try {
           this.image_preview.preview_uri = this.image_preview.getPreviewUri();
-          Page.cmd("optionalFileInfo", this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg", (res) => {
-            this.image_preview.optional_info = res;
-            Page.projector.scheduleRender();
-          });
         } catch (e) {
           this.log("Image preview error: " + e);
         }
+        // Components are recreated on re-render, so a per-instance failed
+        // flag alone would restart the 20s download loop forever on images
+        // no reachable peer has. Remember failures app-wide for 10 minutes.
+        if (Page.failed_images[this.getImagePath()] > Time.timestamp() - 600) {
+          this.failed = true;
+        }
+        Page.cmd("optionalFileInfo", this.getImagePath(), (res) => {
+          this.image_preview.optional_info = res;
+          if (!this.isDataSaver() && !this.loaded && !this.failed) {
+            if (res != null ? res.is_downloaded : void 0) {
+              this.loadFullsize();
+            } else if (res) {
+              this.startDownload();
+            }
+          }
+          Page.projector.scheduleRender();
+        });
         Page.projector.scheduleRender();
       });
     }
 
+    startDownload() {
+      this.loading = true;
+      this.failed = false;
+      Page.cmd("fileNeed", [this.getImagePath()]);
+      this.loadFullsize();
+      clearTimeout(this.download_timer);
+      this.download_timer = setTimeout((() => {
+        if (!this.loaded) {
+          this.loading = false;
+          this.failed = true;
+          Page.failed_images[this.getImagePath()] = Time.timestamp();
+          clearTimeout(this.retry_timer);
+          Page.projector.scheduleRender();
+        }
+      }), 20000);
+      Page.projector.scheduleRender();
+    }
+
+    loadFullsize() {
+      var image = new Image();
+      image.src = this.getImagePath();
+      image.onload = () => {
+        clearTimeout(this.download_timer);
+        clearTimeout(this.retry_timer);
+        this.loading = false;
+        this.failed = false;
+        this.loaded = true;
+        if (this.image_preview.optional_info) {
+          this.image_preview.optional_info.is_downloaded = 1;
+        }
+        Page.projector.scheduleRender();
+      };
+      image.onerror = () => {
+        // Not downloaded yet: poll until the 20s timeout gives up
+        if (!this.loaded && !this.failed) {
+          clearTimeout(this.retry_timer);
+          this.retry_timer = setTimeout(this.loadFullsize, 2500);
+        }
+      };
+    }
+
     handleImageClick(e) {
       var ref;
-      if (this.image_preview.load_fullsize || ((ref = this.image_preview.optional_info) != null ? ref.is_downloaded : void 0)) {
+      if (this.loaded || ((ref = this.image_preview.optional_info) != null ? ref.is_downloaded : void 0)) {
         Page.overlay.zoomImageTag(e.currentTarget, this.image_preview.width, this.image_preview.height);
       } else {
-        this.image_preview.load_fullsize = true;
-        this.image_preview.loading = true;
-        var image = new Image();
-        image.src = this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg";
-        image.onload = () => {
-          this.image_preview.loading = false;
-          this.image_preview.optional_info.is_downloaded = 1;
-          this.image_preview.optional_info.peer += 1;
-          Page.projector.scheduleRender();
-        };
-        Page.projector.scheduleRender();
+        this.startDownload();
       }
+      return false;
+    }
+
+    handleRetryClick() {
+      delete Page.failed_images[this.getImagePath()];
+      this.startDownload();
       return false;
     }
 
@@ -64,10 +137,15 @@
     }
 
     handleImageDeleteClick() {
-      var inner_path = this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg";
+      var inner_path = this.getImagePath();
       Page.cmd("optionalFileDelete", inner_path, () => {
-        this.image_preview.optional_info.is_downloaded = 0;
-        this.image_preview.optional_info.peer -= 1;
+        if (this.image_preview.optional_info) {
+          this.image_preview.optional_info.is_downloaded = 0;
+          this.image_preview.optional_info.peer -= 1;
+        }
+        this.loaded = false;
+        this.loading = false;
+        this.failed = false;
         Page.projector.scheduleRender();
       });
     }
@@ -78,13 +156,13 @@
         if (!this.menu_image) this.menu_image = new Menu();
         this.optional_helping = helping;
         this.menu_image.items = [];
-        this.menu_image.items.push(["Help distribute this user's new images", this.handleOptionalHelpClick, () => { return this.optional_helping; }]);
+        this.menu_image.items.push([_("Help distribute this user's new images"), this.handleOptionalHelpClick, () => { return this.optional_helping; }]);
         this.menu_image.items.push(["---"]);
         var ref;
-        if ((ref = this.image_preview.optional_info) != null ? ref.is_downloaded : void 0) {
-          this.menu_image.items.push(["Delete image", this.handleImageDeleteClick]);
+        if (this.loaded || ((ref = this.image_preview.optional_info) != null ? ref.is_downloaded : void 0)) {
+          this.menu_image.items.push([_("Delete image"), this.handleImageDeleteClick]);
         } else {
-          this.menu_image.items.push(["Show image", this.handleImageClick, false]);
+          this.menu_image.items.push([_("Show image"), this.handleImageClick, false]);
         }
         this.menu_image.toggle();
       });
@@ -92,46 +170,53 @@
     }
 
     render() {
-      if (this.meta.img) {
-        if (!this.image_preview) {
-          this.image_preview = new ImagePreview();
-          this.image_preview.setPreviewData(this.meta.img);
-        }
-        var ref = this.image_preview.getSize(530, 600);
-        var width = ref[0], height = ref[1];
-        var style_preview = "";
-        if (this.image_preview != null ? this.image_preview.preview_uri : void 0) {
-          style_preview = "background-image: url(" + this.image_preview.preview_uri + ")";
-        }
-        var style_fullsize = "";
-        var ref2;
-        if (this.image_preview.load_fullsize || ((ref2 = this.image_preview.optional_info) != null ? ref2.is_downloaded : void 0)) {
-          style_fullsize = "background-image: url(" + this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg)";
-        }
-        var ref3, ref4, ref5, ref6, ref7, ref8;
-        return h("div.img.preview", {
-          afterCreate: this.afterCreateImage,
-          style: "width: " + width + "px; height: " + height + "px; " + style_preview,
-          classes: {
-            downloaded: (ref3 = this.image_preview.optional_info) != null ? ref3.is_downloaded : void 0,
-            hasinfo: ((ref4 = this.image_preview.optional_info) != null ? ref4.peer : void 0) !== null,
-            loading: this.image_preview.loading
-          }
-        },
-          h("a.fullsize", { href: "#", onclick: this.handleImageClick, style: style_fullsize }),
-          Page.server_info.rev < 1700 ? h("small.oldversion", "You need EpixNet 0.5.0 to view this image") : void 0,
-          ((ref5 = this.image_preview) != null ? ref5.optional_info : void 0) ? h("a.show", { href: "#", onclick: this.handleImageClick }, h("div.title", "Loading...\nShow image")) : void 0,
-          ((ref6 = this.image_preview) != null ? ref6.optional_info : void 0) ? h("a.details", {
-            href: "#Settings", onclick: Page.returnFalse, onmousedown: this.handleImageSettingsClick
-          }, [
-            h("div.size", Text.formatSize((ref7 = this.image_preview.optional_info) != null ? ref7.size : void 0)),
-            h("div.peers.icon-profile"),
-            (ref8 = this.image_preview.optional_info) != null ? ref8.peer : void 0,
-            h("a.image-settings", "\u22EE"),
-            this.menu_image ? this.menu_image.render(".menu-right") : void 0
-          ]) : void 0
-        );
+      if (!this.meta.img) {
+        return void 0;
       }
+      if (!this.image_preview) {
+        this.image_preview = new ImagePreview();
+        this.image_preview.setPreviewData(this.meta.img);
+      }
+      var info = this.image_preview.optional_info;
+      var downloaded = this.loaded || (info != null ? info.is_downloaded : void 0);
+      var style = "aspect-ratio: " + this.image_preview.width + " / " + this.image_preview.height + ";";
+      if (this.image_preview.preview_uri) {
+        style += " background-image: url(" + this.image_preview.preview_uri + ");";
+      }
+      var style_fullsize = "";
+      if (downloaded) {
+        style_fullsize = "background-image: url(" + this.getImagePath() + ")";
+      }
+      return h("div.img.preview", {
+        afterCreate: this.afterCreateImage,
+        style: style,
+        classes: {
+          downloaded: !!downloaded,
+          hasinfo: (info != null ? info.peer : void 0) != null,
+          loading: this.loading,
+          failed: this.failed
+        }
+      },
+        h("a.fullsize", { href: "#Image", onclick: this.handleImageClick, style: style_fullsize }),
+        !downloaded && this.loading ? h("div.img-pill.downloading", [
+          h("span.spinner"), _("Downloading from peers...")
+        ]) : void 0,
+        !downloaded && this.failed ? h("a.img-pill.retry", {
+          href: "#Retry", onclick: this.handleRetryClick
+        }, _("Image not available. Tap to retry")) : void 0,
+        !downloaded && !this.loading && !this.failed && info ? h("a.show", {
+          href: "#Show", onclick: this.handleImageClick
+        }, h("div.title", _("Show image"))) : void 0,
+        info ? h("a.details", {
+          href: "#Settings", onclick: Page.returnFalse, onmousedown: this.handleImageSettingsClick
+        }, [
+          h("div.size", Text.formatSize(info.size)),
+          h("div.peers.icon-profile"),
+          info.peer,
+          h("span.image-settings.icon.icon-kebab"),
+          this.menu_image ? this.menu_image.render(".menu-right") : void 0
+        ]) : void 0
+      );
     }
   }
 

@@ -88,13 +88,14 @@
 
   document.body.addEventListener("mouseup", function(e) {
     if (!window.visible_menu || !window.visible_menu.node) return false;
-    if (e.target !== window.visible_menu.node.parentNode &&
-        e.target.parentNode !== window.visible_menu.node &&
-        e.target.parentNode !== window.visible_menu.node.parentNode &&
-        e.target.parentNode !== window.visible_menu.node &&
-        e.target.parentNode.parentNode !== window.visible_menu.node.parentNode) {
-      window.visible_menu.hide();
-      Page.projector.scheduleRender();
-    }
+    var node = window.visible_menu.node;
+    var wrap = node.parentNode;
+    // Keep the menu when releasing inside it or its wrap: the toggle button
+    // lives in the wrap and its own mousedown handler does the toggling.
+    // (Deep buttons like the rail account block have nested spans, which the
+    // old parentNode-hopping checks misjudged as "outside".)
+    if (node.contains(e.target) || (wrap && wrap.contains(e.target))) return;
+    window.visible_menu.hide();
+    Page.projector.scheduleRender();
   });
 })();
