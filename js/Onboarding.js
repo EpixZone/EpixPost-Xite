@@ -17,7 +17,10 @@
     // Setup state machine:
     //  step 1: "Merger:EpixPost" permission not granted yet
     //  step 2: permission ok, but no certificate selected
-    //  step 3: certificate ok, but no profile on any hub
+    //  step 3: certificate ok, but no profile on any hub (internal only:
+    //          the xID IS the profile, so this rides step 2 as its
+    //          "Creating your profile..." wait state; non-xID certs get a
+    //          Create profile link instead of a visible step)
     //  step 4: everything ready, the card renders nothing
     getState() {
       if (!Page.site_info || !Page.site_info.settings) {
@@ -103,16 +106,16 @@
       return false;
     }
 
-    renderStep(num, title, state) {
+    renderStep(num, title, done, active) {
       return h("div.onboarding-step", {
         key: "step-" + num,
         classes: {
-          done: num < state.step,
-          active: num === state.step,
-          pending: num > state.step
+          done: done,
+          active: active,
+          pending: !done && !active
         }
       }, [
-        h("span.onboarding-step-marker", num < state.step ? "✓" : String(num)),
+        h("span.onboarding-step-marker", done ? "✓" : String(num)),
         h("span.onboarding-step-title", title)
       ]);
     }
@@ -134,9 +137,11 @@
           _("Your posts live on hubs: shared sites that you and other users seed together.")
         ]),
         h("div.onboarding-steps", [
-          this.renderStep(1, _("Enable data merging"), state),
-          this.renderStep(2, _("Choose your xID"), state),
-          this.renderStep(3, _("Create profile"), state)
+          // Two visible steps: the xID is the profile, so the internal
+          // profile-creation step shows as step 2's wait spinner, not as a
+          // step of its own.
+          this.renderStep(1, _("Enable data merging"), state.perm, !state.perm),
+          this.renderStep(2, _("Choose your xID"), state.step === 4, state.perm)
         ]),
         status ? h("div.onboarding-status", [
           h("span.spinner"),

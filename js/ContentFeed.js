@@ -17,6 +17,9 @@
       this.need_update = true;
       this.noanim = false;
       this.type = "followed";
+      // The default tab is decided once the user's follows are known (see
+      // update); an explicit tab click locks the choice for the session.
+      this.type_chosen = false;
       // Hub filter pill: menu instance + mergerSiteList cache (hub titles),
       // same data source pattern as ContentHubs
       this.hub_menu = new Menu();
@@ -26,6 +29,7 @@
 
     handleListTypeClick(e) {
       this.type = e.currentTarget.attributes.type.value;
+      this.type_chosen = true;
       this.post_list.limit = 10;
       this.activity_list.limit = 10;
       this.update();
@@ -102,6 +106,18 @@
       this.post_list.hide_empty = !!onboarding;
       if (this.post_list.loaded && !Page.on_loaded.resolved) {
         Page.on_loaded.resolve();
+      }
+      // Pick the default tab once the user's follows are known: "Followed
+      // users" reads as an empty feed for someone who follows nobody, so
+      // those users (and visitors) start on "Everyone".
+      if (!this.type_chosen && Page.on_user_info.resolved) {
+        var follows = (Page.user != null ? Page.user.followed_users : void 0) || {};
+        var default_type = Object.keys(follows).length ? "followed" : "everyone";
+        if (this.type !== default_type) {
+          this.type = default_type;
+          this.need_update = true;
+        }
+        this.type_chosen = true;
       }
       if (this.need_update) {
         this.log("Updating", this.type);
