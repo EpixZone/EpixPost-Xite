@@ -18,12 +18,20 @@
       this.handleOptionalHelpClick = this.handleOptionalHelpClick.bind(this);
       this.handleImageDeleteClick = this.handleImageDeleteClick.bind(this);
       this.handleImageSettingsClick = this.handleImageSettingsClick.bind(this);
+      this.handlePlayClick = this.handlePlayClick.bind(this);
+      this.handleVideoError = this.handleVideoError.bind(this);
+      this.handleVideoRetry = this.handleVideoRetry.bind(this);
       this.render = this.render.bind(this);
       this.loading = false;
       this.loaded = false;
       this.failed = false;
       this.download_timer = null;
       this.retry_timer = null;
+      // The magnet video mounts its <video> (and starts the node fetch) only
+      // after the user clicks play, so a feed full of magnet posts doesn't open
+      // a stream for every one.
+      this.video_started = false;
+      this.video_failed = false;
     }
 
     getImagePath() {
@@ -169,10 +177,110 @@
       return false;
     }
 
-    render() {
-      if (!this.meta.img) {
-        return void 0;
+    handlePlayClick() {
+      this.video_started = true;
+      this.video_failed = false;
+      Page.projector.scheduleRender();
+      return false;
+    }
+
+    handleVideoError() {
+      // The node couldn't stream it (e.g. the web seed is unreachable over the
+      // node's current transport). Show an honest message, not a black box.
+      this.video_failed = true;
+      Page.projector.scheduleRender();
+    }
+
+    handleVideoRetry() {
+      this.video_failed = false;
+      this.video_started = true;
+      Page.projector.scheduleRender();
+      return false;
+    }
+
+    // A readable label for the video: the magnet's dn= display name, or the
+    // filename of a .torrent URL, else a generic fallback.
+    magnetLabel() {
+      var src = this.meta.magnet || "";
+      var m = /[?&]dn=([^&]*)/.exec(src);
+      if (m) {
+        try {
+          return decodeURIComponent(m[1].replace(/\+/g, " "));
+        } catch (e) {}
       }
+      if (/^https?:\/\//i.test(src)) {
+        var base = src.split(/[?#]/)[0].split("/").pop() || "";
+        base = base.replace(/\.torrent$/i, "");
+        if (base) {
+          try {
+            return decodeURIComponent(base);
+          } catch (e) {
+            return base;
+          }
+        }
+      }
+      return _("Video");
+    }
+
+    renderVideo() {
+      var bt = !!(Page.server_info && Page.server_info.bittorrent);
+      var label = this.magnetLabel();
+      if (!bt) {
+        // No BitTorrent engine in this build (e.g. the iOS app): an honest card,
+        // never a dead player.
+        return h("div.video.preview.unavailable", [
+          h("span.icon.icon-magnet.video-badge"),
+          h("div.video-name", label),
+          h("div.video-note", _("Video streaming is available on EpixNet desktop or Android."))
+        ]);
+      }
+      if (this.video_failed) {
+        return h("div.video.preview.unavailable", [
+          h("span.icon.icon-magnet.video-badge"),
+          h("div.video-name", label),
+          h("div.video-note", _("Couldn't stream this video (the source may be unreachable over this node's connection).")),
+          h("a.video-retry", { href: "#Retry", onclick: this.handleVideoRetry }, _("Try again"))
+        ]);
+      }
+      if (!this.video_started) {
+        return h("a.video.preview.poster", {
+          href: "#Play",
+          title: label,
+          onclick: this.handlePlayClick
+        }, [
+          h("span.video-play"),
+          h("div.video-name", label)
+        ]);
+      }
+      // The node fetches + SHA-1-verifies the torrent and streams it; the page
+      // never speaks BitTorrent. The magnet is percent-encoded so its own &/=
+      // survive the query string.
+      var src = "/bt/stream?m=" + encodeURIComponent(this.meta.magnet);
+      return h("div.video.preview.playing", [
+        h("video", {
+          src: src,
+          controls: true,
+          autoplay: true,
+          playsinline: true,
+          preload: "metadata",
+          onerror: this.handleVideoError
+        })
+      ]);
+    }
+
+    render() {
+      var img = this.meta.img ? this.renderImage() : void 0;
+      var video = this.meta.magnet ? this.renderVideo() : void 0;
+      // Common cases return a single node (as before); only a post with both an
+      // image and a magnet needs a wrapper. Keeping the single-node shape avoids
+      // mixing keyed/unkeyed children in the post's child list.
+      if (img && video) {
+        return h("div.post-media", [img, video]);
+      }
+      return img || video || void 0;
+    }
+
+    renderImage() {
       if (!this.image_preview) {
         this.image_preview = new ImagePreview();
         this.image_preview.setPreviewData(this.meta.img);

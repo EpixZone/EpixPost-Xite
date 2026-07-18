@@ -181,7 +181,7 @@ h2.sep a { font-size: 12px; text-transform: none; letter-spacing: normal; font-w
 .icon-settings::before, .icon-compose::before, .icon-reply::before, .icon-heart::before,
 .icon-share::before, .icon-kebab::before, .icon-image::before, .icon-close::before,
 .icon-back::before, .icon-mute::before, .icon-comment::before, .icon-edit::before,
-.icon-upload::before {
+.icon-magnet::before, .icon-upload::before {
 	content: ""; display: inline-block; width: 20px; height: 20px; vertical-align: middle;
 	background-color: currentColor;
 	-webkit-mask-position: center; mask-position: center;
@@ -239,6 +239,10 @@ h2.sep a { font-size: 12px; text-transform: none; letter-spacing: normal; font-w
 .icon-close::before {
 	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
+}
+.icon-magnet::before {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 4v7a6 6 0 0 0 12 0V4'/%3E%3Cpath d='M6 9h4M14 9h4'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 4v7a6 6 0 0 0 12 0V4'/%3E%3Cpath d='M6 9h4M14 9h4'/%3E%3C/svg%3E");
 }
 .icon-back::before {
 	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 5 8 12l6.5 7'/%3E%3C/svg%3E");
@@ -666,13 +670,68 @@ a.avatar:hover { text-decoration: none; opacity: 0.9 }
 .composer-modal .image .close::before { width: 16px; height: 16px }
 .composer-modal .image .close:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) }
 .composer-foot { display: flex; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--epix-border) }
-.composer-foot .icon-image {
+.composer-foot .icon-image, .composer-foot .icon-magnet {
 	min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
-	box-sizing: border-box; color: var(--epix-accent-text); border-radius: var(--epix-radius-md); margin-left: -10px
+	box-sizing: border-box; color: var(--epix-accent-text); border-radius: var(--epix-radius-md)
 }
-.composer-foot .icon-image:hover { background-color: var(--epix-surface-2); text-decoration: none }
+.composer-foot .icon-image { margin-left: -10px }
+.composer-foot .icon-image:hover, .composer-foot .icon-magnet:hover { background-color: var(--epix-surface-2); text-decoration: none }
+.composer-foot .icon-magnet.active { background-color: var(--epix-surface-2); color: var(--epix-accent) }
+.composer-modal .magnet-row {
+	display: flex; align-items: center; gap: 8px; margin: 8px 0 0 56px
+}
+.composer-modal .magnet-input {
+	flex: 1 1 auto; min-width: 0; background-color: var(--epix-surface-2); color: var(--epix-text);
+	border: 1px solid var(--epix-border-strong); border-radius: var(--epix-radius-md);
+	padding: 9px 11px; font-size: 13px; font-family: var(--epix-font-mono, monospace)
+}
+.composer-modal .magnet-input:focus { outline: none; border-color: var(--epix-accent) }
+.composer-modal .magnet-clear {
+	flex: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+	color: var(--epix-text-low); border-radius: 50%
+}
+.composer-modal .magnet-clear:hover { background-color: var(--epix-surface-2); text-decoration: none }
+.composer-modal .magnet-clear::before { width: 16px; height: 16px }
 .char-count { margin-left: auto; font-size: 13px; color: var(--epix-text-low) }
 .char-count.warn { color: var(--epix-danger); font-weight: 600 }
+
+/* Magnet video player in a post (BitTorrent stream via the node's /bt/stream) */
+.post .video.preview {
+	position: relative; display: block; margin-top: 10px; border-radius: var(--epix-radius-md);
+	overflow: hidden; background-color: #000; aspect-ratio: 16 / 9
+}
+.post .video.preview.poster {
+	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+	background: linear-gradient(140deg, #1a1a1f, #101014); color: var(--epix-text)
+}
+.post a.video.preview.poster:hover { text-decoration: none }
+.post .video.preview .video-play {
+	width: 62px; height: 62px; border-radius: 50%; background-color: rgba(45, 206, 137, 0.92);
+	display: inline-block; position: relative; transition: transform 0.12s ease
+}
+.post a.video.preview.poster:hover .video-play { transform: scale(1.06) }
+.post .video.preview .video-play::before {
+	content: ""; position: absolute; top: 50%; left: 54%; transform: translate(-50%, -50%);
+	border-style: solid; border-width: 12px 0 12px 20px; border-color: transparent transparent transparent #09090A
+}
+.post .video.preview .video-name {
+	font-size: 14px; font-weight: 600; color: #FEFEFE; max-width: 82%; text-align: center;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap
+}
+.post .video.preview.playing { aspect-ratio: auto }
+.post .video.preview.playing video { display: block; width: 100%; max-height: 70vh; background: #000 }
+.post .video.preview.unavailable {
+	aspect-ratio: auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+	gap: 8px; padding: 26px 18px; background: var(--epix-surface-2); color: var(--epix-text)
+}
+.post .video.preview.unavailable .video-badge { color: var(--epix-text-low); width: 28px; height: 28px }
+.post .video.preview.unavailable .video-note { font-size: 13px; color: var(--epix-text-low); text-align: center; max-width: 340px }
+.post .video.preview.unavailable .video-retry {
+	margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--epix-accent-text);
+	background-color: var(--epix-surface); border: 1px solid var(--epix-border-strong);
+	border-radius: var(--epix-radius-md); padding: 7px 14px
+}
+.post .video.preview.unavailable .video-retry:hover { text-decoration: none; background-color: var(--epix-surface) }
 
 
 /* ---- onboarding card ---- */

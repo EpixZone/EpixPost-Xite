@@ -4,7 +4,7 @@
  "background-color": "#FEFEFE",
  "background-color-dark": "#0B0B0D",
  "description": "Social Network",
- "epixnet_version": "0.0.3",
+ "epixnet_version": "0.3.10",
  "favicon": "img/favicon.ico",
  "files": {
   "LICENSE": {
@@ -16,8 +16,8 @@
    "size": 2420
   },
   "css/all.css": {
-   "sha512": "133fb2fec5c5d0fb8bcc5f0839c6a9a92977f35af5f2c78810f10080f39b98e1",
-   "size": 67182
+   "sha512": "1ebfdcdd92515e1ad33c22af6a9c85d4f20840fcb36fa2ae718680099d054c32",
+   "size": 75225
   },
   "dbschema.json": {
    "sha512": "e25e6f84e0568618ceee950b1e665d07403ae3aa0c4f327408879e26f59cda54",
@@ -44,80 +44,80 @@
    "size": 4077
   },
   "js/ActivityList.js": {
-   "sha512": "be10519ebf394894833ee9c33061bdad4d5309f18fda22381cfb081bd334b8be",
-   "size": 11436
+   "sha512": "82ba966fe56d2396de09802e0ae607e50fc909de9086b750df73cd8e684ed1ad",
+   "size": 12407
   },
   "js/AnonUser.js": {
    "sha512": "e9ecfe06a5d09c777607848bcae0952e80b3845d1413195dbb821be4073de210",
    "size": 1676
   },
   "js/ComposerModal.js": {
-   "sha512": "f920398fdfc046f7273d56b64b0c0c7bfb49e93e11bfcd38fd6f5f9716a94812",
-   "size": 7593
+   "sha512": "f051db46c5d16a0462e3998854ae65ce7060fc65a6e3c5e6aa83f3bab35c56d8",
+   "size": 9971
   },
   "js/ContentCreateProfile.js": {
    "sha512": "a29bc66d46344ac3c6f1493dd306502937283f0a7cdb94982c44748d785cd7e6",
    "size": 7062
   },
   "js/ContentFeed.js": {
-   "sha512": "dd4072a4048cc604fee9531987824c8acfc21f66e97a32a75b1ed897bb2c4bdd",
-   "size": 5228
+   "sha512": "e3a9b1c92d43ccd8ecdba7fbdfcdb981a6080a9bfe64ff65d587877966c2d133",
+   "size": 8976
   },
   "js/ContentHubs.js": {
-   "sha512": "a68823dd50a7e64cfa7dc2ae8f626942e70767f3bd0879e072294237ec454df6",
-   "size": 32134
+   "sha512": "35c2555ca09e294d394948ec860da2a1902a33f3a060f8ebea8200cef3029c92",
+   "size": 32078
   },
   "js/ContentProfile.js": {
-   "sha512": "4fdb000959f571435bd8a910c4c21bfe6e305b2370f2b5c02c2e4de6c7a09d96",
-   "size": 14263
+   "sha512": "b329bb5f3bffde750f72562963e610356c7d1927ed53c5fe587dfa63941a0d42",
+   "size": 14474
   },
   "js/ContentSettings.js": {
-   "sha512": "92c3b39f22603db6c2983b5da502aa45fca88e8f2cf6b210869f6d5aeac27696",
-   "size": 8195
+   "sha512": "52e028b74299a13e1b58fbb6ee6f15e57e17bf307841a8479ba57eb985869f09",
+   "size": 7427
   },
   "js/ContentThread.js": {
    "sha512": "420a33058b51a654bab416b3604ae62d7c4ad1e24ba17d2f30f2f4723dbed0a2",
    "size": 5023
   },
   "js/ContentUsers.js": {
-   "sha512": "4a3a9f3cdd6fca1b7f4af2ec9962e36527996e2f079e4fe1b784ba70a5c267be",
-   "size": 5437
+   "sha512": "625fd676ed9b418ac1aa9e454373a0fd3588fd0c31613acbb68623bd9293e85a",
+   "size": 4766
   },
   "js/EpixPost.js": {
-   "sha512": "47918869c8a9c572cea2e7896bf2f4abbcfde9028f4a091d22c66d087eb53751",
-   "size": 21427
+   "sha512": "81c6e88dc75e67c22a167c358aaf1c7ccbdf97c9c2d7f7594a790385a01fb43f",
+   "size": 23083
   },
   "js/Onboarding.js": {
-   "sha512": "6771e3e7cd55790ff83ad896b8d48971993f2d8207675614d2be2ed17371065b",
-   "size": 6075
+   "sha512": "65060e4d433cb8b42193caee5b6ada79a842e35f0da36ffc0da08ce2ff1c069c",
+   "size": 6429
   },
   "js/Post.js": {
-   "sha512": "1f14da09db00c774789dc91b241d6e5e3d6e29f604e0ec8eeec1f1c29fe527f1",
-   "size": 27857
+   "sha512": "cafee17efc9f338190774aeff6efb2d04684b1184ec1ea16a93a1f40dded24ce",
+   "size": 28620
   },
   "js/PostCreate.js": {
    "sha512": "d9f8fb40f42913969f42cd34b2754bdf5b529002cbcc07f6526da6a4aae9c81c",
    "size": 2028
   },
   "js/PostList.js": {
-   "sha512": "1e41d24527c819a22c8da1a80a505b7df6499be51fe701b6d189054e7e0b8939",
-   "size": 8066
+   "sha512": "cca9d4b508ff76bd3d3277205fcc71033902e1fedc35dd7cd576b44eda7fa3b7",
+   "size": 9080
   },
   "js/PostMeta.js": {
-   "sha512": "88510604eb52e3c2b6e14f82da092ba63520fdd2baed0105b8225cd8ecacefbe",
-   "size": 8082
+   "sha512": "eae9c53b124cf2b621b2dedb45bd1f1bd0cac7c80c9d45c8255be933b2076ea1",
+   "size": 12454
   },
   "js/Shell.js": {
    "sha512": "9940165119a57b47a687b0e6cf95c338badf7be50e5ad42ca6db85848a600658",
    "size": 11195
   },
   "js/User.js": {
-   "sha512": "b71cc50440494547e6b954b90829b3cda2244704a47abb39d36f2da9b96ac7d9",
-   "size": 19661
+   "sha512": "1ed9e03b6a732b6c84e3cab4cd84fe010e59e18f55b38da4ee919176177d3651",
+   "size": 22838
   },
   "js/UserList.js": {
-   "sha512": "ff198510fb1f89c7c220f3f3607e120ce71845db9f3ab7b70b0911e5f14c638a",
-   "size": 5395
+   "sha512": "5d4def7f3f928d0e363e097c7681e172147d9c9285be89253bd0d615b48ab633",
+   "size": 5688
   },
   "js/lib/anime.min.js": {
    "sha512": "6efe3acb31bd1c46798e83d830a05c27db5d0cae46a333c69decd9a6a4b87c9e",
@@ -140,8 +140,8 @@
    "size": 23602
   },
   "js/utils/Animation.js": {
-   "sha512": "fec21d925c8124ca2f81a9565089077184406e9e84c7c18c295aac44654e8a30",
-   "size": 8360
+   "sha512": "2e06713c658772b6e5e17731269c59880b1527a43908ede02871ef4e0332e2b6",
+   "size": 6940
   },
   "js/utils/Autosize.js": {
    "sha512": "9996703b30e36d86ba00167fb337b0b89d6ad3dda78480257f432d4242fce06d",
@@ -164,8 +164,8 @@
    "size": 2597
   },
   "js/utils/HubActions.js": {
-   "sha512": "953cd59fa373693a06f5777095e2117e2f0fcd47f24b0d61d1acfcd99b95ed03",
-   "size": 4841
+   "sha512": "519e7442c587a4eec1bb47dcecf124e39bb25a6bb2a82bc71dc3cb4db647913c",
+   "size": 3148
   },
   "js/utils/ImagePreview.js": {
    "sha512": "a03d024e74c11130b4f4666936e1bc27dfb572bd3ff101f6281ee95593e2a11d",
@@ -184,8 +184,8 @@
    "size": 671
   },
   "js/utils/Menu.js": {
-   "sha512": "e3e7acc5dc9ad9fb7a74a2d495c3147f103b0307f1eae98b6b718430ef07cc71",
-   "size": 2951
+   "sha512": "c1d9950e7fbf64017752ce7d662c7d1fc90f9d3fff2116f2afa7696b8a07e5bc",
+   "size": 3050
   },
   "js/utils/Overlay.js": {
    "sha512": "6c2f98c4133361f47e720ecce514384a75ac1e998f283dac972133c47813bd8b",
@@ -220,53 +220,53 @@
    "size": 5814
   },
   "languages/da.json": {
-   "sha512": "82e308f77a9330c3e8bb754272b9d1fe317de09940a62e35ed9b559ee0101618",
-   "size": 8813
+   "sha512": "daceb14c55bda156c1aba10e94c63239fd77dac746e7ec39172e8b7cde63ae13",
+   "size": 8810
   },
   "languages/fa.json": {
-   "sha512": "43d8d2dde94b73c27926c0669e1b5cc248600019739d631932e9b5ddb08fed9a",
-   "size": 11856
+   "sha512": "eb13e5cd1c3b935df04ebb4f6b2e2f0fd76735a74782b2b38839cde8e27884d2",
+   "size": 11887
   },
   "languages/fr.json": {
-   "sha512": "1fba03d1e83a2ec4abd07aed133383db62cae2f16c7cdf7f5f2d4e6b5288e96a",
-   "size": 9693
+   "sha512": "6cf92a0d19b2e8925110e1cf937af457bac7060f9fd62dab3afd2cebdafd0827",
+   "size": 9695
   },
   "languages/hu.json": {
-   "sha512": "d4f1409ea36a41c53a64e6cc20d7f1250891162c6a8c5b46d4722807bc79c47e",
-   "size": 9631
+   "sha512": "a5babfeeff611b63cbc23f96f74dcf6470f20279db97711c2687b8f3e425d1a6",
+   "size": 9645
   },
   "languages/it.json": {
-   "sha512": "4547e6c468bd5b622865337cbefc8bdf92ef4862cff9fa6d4f9a5e7778c32ddf",
-   "size": 9150
+   "sha512": "56e52789d7ce9d34e01e201fc49c7e30db96a116295ab05977a7ee32d9d40f90",
+   "size": 9136
   },
   "languages/nl.json": {
-   "sha512": "32dfb19d9fb55a9dddd525508acc061ef89ae7317559a7c30956289fd21b188b",
-   "size": 9205
+   "sha512": "c585ceea8e5e517fd8d5261d7d00f5f902ffaf801bb62492233a7d737d2ab557",
+   "size": 9190
   },
   "languages/pt-br.json": {
-   "sha512": "a1bce964b7b8ac15a7479fc4343c0196aa9313330de66e03370bb17541f4a839",
-   "size": 9217
+   "sha512": "0741e5a9b53811918949a29fcf2570cff3ff5b42dee8e4651ca5c0ba6ee9b574",
+   "size": 9216
   },
   "languages/sk.json": {
-   "sha512": "417c7fbcd1e022417b3204402c73fa6e9d428bf4406adbdd6f0baa1ff88cb166",
-   "size": 9509
+   "sha512": "e85c7685518b0b051ce1cab6d4cd055d64629ac08136b387488d57bfa35c0a9e",
+   "size": 9478
   },
   "languages/tr.json": {
-   "sha512": "8fc1f7a5c4ef8f5f7dccd586e44ce589bc81b2626870b45b996d10296ca85302",
-   "size": 9390
+   "sha512": "11491e8e6e91d76088c6a940558328c1bdd471c97db8f656df4825ec742b5e23",
+   "size": 9422
   },
   "languages/zh-tw.json": {
-   "sha512": "27176cc47562b277faa073c111406892ef3c96a4a678318142bb9ffab1d8931f",
-   "size": 8749
+   "sha512": "40606c4ab47ab945b1f82a6deb26f604cc20422dcc5d014fe36570004adff0aa",
+   "size": 8694
   },
   "languages/zh.json": {
-   "sha512": "bb9841f1c19ff3fd979c6d6b9571ec1e31c7b2371a0d464d9b7bce94633d9d58",
-   "size": 8707
+   "sha512": "7ce2aa095d91ba33a711ca96e037466980ec2fe398f50852927c34cf1a91cabc",
+   "size": 8664
   }
  },
  "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|hub-xite/.*|\\.git)",
  "inner_path": "content.json",
- "modified": 1775060163,
+ "modified": 1784348169,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -277,36 +277,9 @@
   }
  },
  "signers_sign": "HL3T+I7ncGYH/A5YXm0iKd6JHRWGrCDu+u0/z+n/R9XEB/Oo8Lz9oxN3nG5L0OJ7XMZFs1OmuSsvhTW7YlL/ODY=",
- "signs": {
-  "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HOiMmeMseoviP6sCOXfEfE1eNFZPWo+RM5x1tNjuoK0wPMtHYtpfBMEcR4/P8YxhIqrdg38gfRAoRlCKRKMqvPs="
- },
+ "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HAZqnmMWfsAmErRu8gtkacqHjZtIvfsuJ5QXidTkZqQgZyaMK07v+un+t9hRX4+BU3YL1X8HJJReC3Yr3kNNkpY="},
  "signs_required": 1,
  "title": "Epix Post",
- "translate": [
-  "index.html",
-  "js/EpixPost.js",
-  "js/Shell.js",
-  "js/Onboarding.js",
-  "js/ComposerModal.js",
-  "js/User.js",
-  "js/Post.js",
-  "js/PostCreate.js",
-  "js/PostList.js",
-  "js/PostMeta.js",
-  "js/ContentFeed.js",
-  "js/ContentProfile.js",
-  "js/ContentCreateProfile.js",
-  "js/ContentUsers.js",
-  "js/ContentHubs.js",
-  "js/ContentThread.js",
-  "js/ContentSettings.js",
-  "js/ActivityList.js",
-  "js/UserList.js",
-  "js/utils/Text.js",
-  "js/utils/Translate.js",
-  "js/utils/HubActions.js",
-  "js/AnonUser.js",
-  "js/utils/Uploadable.js"
- ],
+ "translate": ["index.html","js/EpixPost.js","js/Shell.js","js/Onboarding.js","js/ComposerModal.js","js/User.js","js/Post.js","js/PostCreate.js","js/PostList.js","js/PostMeta.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentCreateProfile.js","js/ContentUsers.js","js/ContentHubs.js","js/ContentThread.js","js/ContentSettings.js","js/ActivityList.js","js/UserList.js","js/utils/Text.js","js/utils/Translate.js","js/utils/HubActions.js","js/AnonUser.js","js/utils/Uploadable.js"],
  "viewport": "width=device-width, initial-scale=1"
 }

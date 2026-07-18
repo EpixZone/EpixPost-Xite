@@ -13,6 +13,9 @@
       this.handleUpload = this.handleUpload.bind(this);
       this.handleUploadClick = this.handleUploadClick.bind(this);
       this.handleImageClose = this.handleImageClose.bind(this);
+      this.handleMagnetClick = this.handleMagnetClick.bind(this);
+      this.handleMagnetInput = this.handleMagnetInput.bind(this);
+      this.handleMagnetClose = this.handleMagnetClose.bind(this);
       this.handleHubChange = this.handleHubChange.bind(this);
       this.handlePostSubmit = this.handlePostSubmit.bind(this);
       this.render = this.render.bind(this);
@@ -20,6 +23,10 @@
       this.submitting = false;
       this.selected_hub = null;
       this.char_limit = 5000;
+      // A magnet link the user attaches to stream open-licensed video. Kept as a
+      // plain string on meta.magnet; the reader's PostMeta renders the player.
+      this.magnet = "";
+      this.show_magnet = false;
       this.field_post = new Autosize({
         placeholder: _("What's happening?"),
         "class": "postfield",
@@ -108,6 +115,26 @@
       return false;
     }
 
+    // Toggle the magnet input row (an inline field, not a prompt() - the xite
+    // iframe is sandboxed without allow-modals, so prompt/alert are blocked).
+    handleMagnetClick() {
+      this.show_magnet = !this.show_magnet;
+      Page.projector.scheduleRender();
+      return false;
+    }
+
+    handleMagnetInput(e) {
+      this.magnet = e.target.value.trim();
+      Page.projector.scheduleRender();
+    }
+
+    handleMagnetClose() {
+      this.magnet = "";
+      this.show_magnet = false;
+      Page.projector.scheduleRender();
+      return false;
+    }
+
     handleHubChange(e) {
       this.selected_hub = e.target.value;
       Page.projector.scheduleRender();
@@ -136,7 +163,9 @@
         return false;
       }
       var value = this.field_post.attrs.value || "";
-      if (!value.trim() && !this.image.base64uri) {
+      // Accept a magnet link or a direct .torrent URL (the node resolves both).
+      var has_magnet = !!(this.magnet && (this.magnet.indexOf("magnet:?") === 0 || /^https?:\/\//i.test(this.magnet)));
+      if (!value.trim() && !this.image.base64uri && !has_magnet) {
         return false;
       }
       this.submitting = true;
@@ -146,6 +175,10 @@
       if (this.image.height) {
         meta = {img: this.image.preview_data};
       }
+      if (has_magnet) {
+        meta = meta || {};
+        meta.magnet = this.magnet;
+      }
       var img_data = this.image.base64uri ? this.image.base64uri.replace(/.*base64,/, "") : null;
       this.getPostUser().post(value, meta, img_data, (res) => {
         this.submitting = false;
@@ -153,6 +186,8 @@
         if (res) {
           this.field_post.setValue("");
           this.image = new ImagePreview();
+          this.magnet = "";
+          this.show_magnet = false;
           this.close();
         }
         setTimeout((function() {
@@ -220,11 +255,33 @@
               onclick: this.handleImageClose
             })
           ]) : void 0,
+          this.show_magnet ? h("div.magnet-row", [
+            h("input.magnet-input", {
+              type: "text",
+              placeholder: "magnet:?xt=…  or  https://…/video.torrent",
+              value: this.magnet,
+              oninput: this.handleMagnetInput,
+              afterCreate: function(el) { el.focus(); }
+            }),
+            this.magnet ? h("a.icon.icon-close.magnet-clear", {
+              href: "#Clear",
+              title: _("Remove magnet"),
+              onclick: this.handleMagnetClose
+            }) : void 0
+          ]) : void 0,
           h("div.composer-foot", [
             h("a.icon.icon-image.link", {
               href: "#Image",
               title: _("Add image"),
               onclick: this.handleUploadClick
+            }),
+            h("a.icon.icon-magnet.link", {
+              href: "#Magnet",
+              title: _("Attach a video by magnet link"),
+              classes: {
+                active: this.show_magnet || !!this.magnet
+              },
+              onclick: this.handleMagnetClick
             }),
             h("span.char-count", {
               classes: {
