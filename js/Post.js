@@ -571,7 +571,7 @@
           h("a.name.link", {
             href: user_link,
             onclick: Page.handleLinkClick
-          }, display_name), comment.cert_user_id && !comment.cert_user_id.match(/@xid$/) ? [
+          }, display_name), comment.cert_user_id && !comment.cert_user_id.match(/@xid(\.epix)?$/) ? [
             h("span.sep", " · "), h("span.address", {
               title: user_address
             }, comment.cert_user_id)
@@ -687,7 +687,7 @@
 
     renderHeader() {
       var handle = null;
-      if (this.row.cert_user_id && !this.row.cert_user_id.match(/@xid$/)) {
+      if (this.row.cert_user_id && !this.row.cert_user_id.match(/@xid(\.epix)?$/)) {
         handle = this.row.cert_user_id;
       }
       return h("div.user", [

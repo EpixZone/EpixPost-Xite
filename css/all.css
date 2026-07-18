@@ -181,7 +181,7 @@ h2.sep a { font-size: 12px; text-transform: none; letter-spacing: normal; font-w
 .icon-settings::before, .icon-compose::before, .icon-reply::before, .icon-heart::before,
 .icon-share::before, .icon-kebab::before, .icon-image::before, .icon-close::before,
 .icon-back::before, .icon-mute::before, .icon-comment::before, .icon-edit::before,
-.icon-magnet::before, .icon-upload::before {
+.icon-magnet::before, .icon-upload::before, .icon-mail::before {
 	content: ""; display: inline-block; width: 20px; height: 20px; vertical-align: middle;
 	background-color: currentColor;
 	-webkit-mask-position: center; mask-position: center;
@@ -263,6 +263,10 @@ h2.sep a { font-size: 12px; text-transform: none; letter-spacing: normal; font-w
 .icon-upload::before {
 	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15.5v-11M8 8l4-3.5L16 8'/%3E%3Cpath d='M5 13.5v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5'/%3E%3C/svg%3E");
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15.5v-11M8 8l4-3.5L16 8'/%3E%3Cpath d='M5 13.5v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5'/%3E%3C/svg%3E");
+}
+.icon-mail::before {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3 7.5 9 6 9-6'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3 7.5 9 6 9-6'/%3E%3C/svg%3E");
 }
 
 /* Text-glyph icons kept as characters */
@@ -987,6 +991,7 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 
 .button-follow-big { min-width: 120px }
 .user.followed .button-follow-big .icon-follow { transform: rotate(45deg) }
+.button-message { background-color: transparent; border: 1px solid var(--epix-border); color: var(--epix-text) }
 .button-edit-profile { display: block; margin-top: 8px }
 
 /* card grid (Users page): the UserList element is the grid itself, so the
@@ -1013,10 +1018,6 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 	font-weight: 600; font-size: 14px; color: var(--epix-text); max-width: 100%;
 	white-space: nowrap; overflow: hidden; text-overflow: ellipsis
 }
-.user.card.grid .handle {
-	color: var(--epix-text-low); font-family: var(--epix-font-mono); font-size: 11px; margin-top: 2px;
-	white-space: nowrap; overflow: hidden; text-overflow: ellipsis
-}
 .user.card.grid .meta { color: var(--epix-text-low); font-size: 12px; margin-top: 4px }
 .user.card.grid .intro, .user.card.grid .intro.followedby {
 	color: var(--epix-text-low); font-size: 13px; line-height: 1.35; margin-top: 6px; white-space: normal;
@@ -1031,10 +1032,6 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 .user.card.profile { text-align: center; padding: 20px 16px }
 .user.card.profile .avatar { width: 80px; height: 80px }
 .user.card.profile .name { font-size: 18px; font-weight: 700; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis }
-.user.card.profile .cert_user_id {
-	color: var(--epix-text-low); font-family: var(--epix-font-mono); font-size: 12px; margin-top: 2px;
-	overflow: hidden; text-overflow: ellipsis; white-space: nowrap
-}
 .profile-kebab {
 	position: absolute; top: 8px; right: 8px; color: var(--epix-text-low);
 	display: inline-flex; align-items: center; justify-content: center;
@@ -1044,7 +1041,7 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 .profile-kebab:hover { color: var(--epix-text); background-color: var(--epix-surface-2); text-decoration: none }
 .user.card.profile .menu-profile { top: 48px; right: 8px; left: auto; text-align: left }
 .user.card.profile .intro-full { color: var(--epix-text-mid); font-size: 14px; margin-top: 10px; white-space: normal }
-.user.card.profile .follow-container { margin-top: 14px }
+.user.card.profile .follow-container { display: flex; gap: 8px; justify-content: center; margin-top: 14px }
 
 .profile-stats { display: flex; justify-content: center; gap: 20px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--epix-border) }
 .profile-stats .stat { text-align: center }

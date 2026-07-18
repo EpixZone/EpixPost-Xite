@@ -29,7 +29,7 @@
       var state = {};
       state.perm = Page.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0;
       state.cert = Page.site_info.cert_user_id;
-      state.cert_is_xid = state.cert ? /@xid$/.test(state.cert) : false;
+      state.cert_is_xid = state.cert ? /@xid(\.epix)?$/.test(state.cert) : false;
       state.profile = (Page.user != null ? Page.user.hub : void 0) ? true : false;
       state.hub_connected = this.isHubConnected();
       if (!state.perm) {

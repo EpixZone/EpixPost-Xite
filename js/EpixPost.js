@@ -471,7 +471,7 @@
         } else {
           this.user = new AnonUser();
           this.user.updateInfo();
-          if (this.site_info.cert_user_id != null ? this.site_info.cert_user_id.match(/@xid$/) : void 0) {
+          if (this.site_info.cert_user_id != null ? this.site_info.cert_user_id.match(/@xid(\.epix)?$/) : void 0) {
             this.autoCreateXidProfile(cb);
           } else {
             if (typeof cb === "function") cb(false);
@@ -587,7 +587,7 @@
         }
         if (site_info.event != null ? site_info.event[0] === "cert_changed" : void 0) {
           this.checkUser((found) => {
-            if (Page.site_info.cert_user_id && !found && !Page.site_info.cert_user_id.match(/@xid$/)) {
+            if (Page.site_info.cert_user_id && !found && !Page.site_info.cert_user_id.match(/@xid(\.epix)?$/)) {
               this.setUrl("?Create+profile");
             }
             if (Page.site_info.cert_user_id) {

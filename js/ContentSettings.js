@@ -170,7 +170,7 @@
           onclick: Page.shell.handleSelectUserClick
         }, cert ? _("Switch account") : _("Select account"))
       ]));
-      if (cert && cert.match(/@xid$/)) {
+      if (cert && cert.match(/@xid(\.epix)?$/)) {
         rows.push(h("a.settings-row.settings-nav", {
           key: "editxid",
           href: "#Edit+profile",

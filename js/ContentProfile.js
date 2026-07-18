@@ -9,6 +9,7 @@
       this.hasUserIdentity = this.hasUserIdentity.bind(this);
       this.handleEditProfileClick = this.handleEditProfileClick.bind(this);
       this.handleProfileMenuClick = this.handleProfileMenuClick.bind(this);
+      this.handleMessageClick = this.handleMessageClick.bind(this);
       this.filter = this.filter.bind(this);
       this.findUser = this.findUser.bind(this);
       this.setUser = this.setUser.bind(this);
@@ -39,14 +40,18 @@
               this.user.renderAvatar(), h("a.name.link", {
                 href: this.user.getLink(),
                 onclick: Page.handleLinkClick
-              }, this.user.getDisplayName()), h("div.cert_user_id", this.getHandle()), h("div.intro-full", this.user.getDisplayIntro()), h("div.follow-container", [
+              }, this.user.getDisplayName()), h("div.intro-full", this.user.getDisplayIntro()), h("div.follow-container", [
                 h("a.button.button-follow-big", {
                   href: "#",
                   onclick: this.user.handleFollowClick,
                   classes: {
                     loading: this.user.submitting_follow
                   }
-                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow"))
+                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow")), this.canMessage() ? h("a.button.button-message", {
+                  key: "message",
+                  href: "#Message",
+                  onclick: this.handleMessageClick
+                }, [h("span.icon.icon-mail"), _("Message")]) : void 0
               ])
             ])
           ])
@@ -183,6 +188,18 @@
       return false;
     }
 
+    // The Message button needs a bare xid name to deep-link into EpixMail;
+    // profiles without a resolved xid (or our own) get no button.
+    canMessage() {
+      var xid = this.user != null ? this.user.xid_profile : void 0;
+      return !this.owned && !!(xid != null ? xid.name : void 0);
+    }
+
+    handleMessageClick() {
+      Page.cmd("wrapperOpenWindow", ["/epix1pvta40a8d944w3npr9ztqrfh3wec53hh2je4fa/?to=" + encodeURIComponent(this.user.xid_profile.name)]);
+      return false;
+    }
+
     hasUserIdentity() {
       var row = (this.user != null ? this.user.row : void 0) || {};
       var xid = this.user != null ? this.user.xid_profile : void 0;
@@ -311,7 +328,7 @@
               this.user.renderAvatar(), h("span.name.link", h("a", {
                 href: this.user.getLink(),
                 onclick: Page.handleLinkClick
-              }, this.user.getDisplayName())), h("div.cert_user_id", this.getHandle()), h("div.intro-full", {
+              }, this.user.getDisplayName())), h("div.intro-full", {
                 innerHTML: Text.renderMarked(this.user.getDisplayIntro())
               }), h("div.profile-stats", [h("div.stat", [h("span.stat-value", "" + this.post_count), h("span.stat-label", _("Posts"))]), h("div.stat", [h("span.stat-value", "" + this.follower_count), h("span.stat-label", _("Followers"))]), h("div.stat", [h("span.stat-value", "" + this.following_count), h("span.stat-label", _("Following"))])]), !this.owned ? h("div.follow-container", [
                 h("a.button.button-follow-big", {
@@ -320,7 +337,11 @@
                   classes: {
                     loading: this.user.submitting_follow
                   }
-                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow"))
+                }, h("span.icon-follow", "+"), this.user.isFollowed() ? _("Unfollow") : _("Follow")), this.canMessage() ? h("a.button.button-message", {
+                  key: "message",
+                  href: "#Message",
+                  onclick: this.handleMessageClick
+                }, [h("span.icon.icon-mail"), _("Message")]) : void 0
               ]) : void 0, this.owned ? h("a.button.button-edit-profile", {
                 href: "#",
                 onclick: this.handleEditProfileClick
