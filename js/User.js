@@ -561,7 +561,7 @@
     // Compact centered card for the Users page grid. list_type is the
     // UserList type ("active", "suggested", ...) the card is rendered in.
     renderGridCard(list_type) {
-      var handle, intro, link, meta, name, title;
+      var intro, link, meta, name, title;
       link = this.getLink();
       if (this.isFollowed()) {
         title = _("Unfollow");
@@ -569,10 +569,6 @@
         title = _("Follow");
       }
       name = this.getDisplayName();
-      handle = this.getHandle();
-      if (handle === name) {
-        handle = "";
-      }
       // The "active" query counts the user's posts from the last 7 days; the
       // other user list queries have no date_added column (json table), so
       // only show Time.since for a real timestamp (follower lists have one).
@@ -605,8 +601,7 @@
         }), h("a.name.link", {
           href: link,
           onclick: Page.handleLinkClick
-        }, name), handle ? h("div.handle", handle) : void 0,
-        meta ? h("div.meta", meta) : void 0,
+        }, name), meta ? h("div.meta", meta) : void 0,
         this.row.followed_by ? h("div.intro.followedby", [
           _("Followed by") + " ", h("a.name.link", {
             href: "?ProfileName/" + this.row.followed_by,
