@@ -222,16 +222,99 @@
     }
 
     getDefaultData() {
+      // Posts live in posts.json (a signed-CRDT merge file), NOT here - so a
+      // profile seed can never overwrite them. data.json keeps profile-adjacent
+      // state (comments/follows/likes) that is still last-writer-wins for now.
       return {
-        "next_post_id": 1,
         "next_comment_id": 1,
         "next_follow_id": 1,
         "hub": this.hub,
-        "post": [],
         "post_like": {},
         "comment": [],
         "follow": []
       };
+    }
+
+    // A 128-bit random nonce (hex) - the entropy that makes a post_id unique.
+    randNonce() {
+      var a = new Uint8Array(16);
+      (window.crypto || window.msCrypto).getRandomValues(a);
+      return Array.from(a).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Read this user's posts.json (all signed record versions).
+    getPosts(site, cb) {
+      return Page.cmd("fileGet", [this.getPath(site) + "/posts.json", false], (data) => {
+        var container;
+        container = data ? JSON.parse(data) : null;
+        if (!container || !container.post) {
+          container = { "record_format": "epix-orset-1", "post": [] };
+        }
+        return cb(container);
+      });
+    }
+
+    // Write ONE signed record to posts.json and publish. The node union-merges
+    // the record into the on-disk set (so this never overwrites other posts)
+    // and signs+bumps the user content.json, which propagates the merge.
+    savePost(record, site, cb) {
+      if (site == null) site = this.hub;
+      if (cb == null) cb = null;
+      var container = { "record_format": "epix-orset-1", "post": [record] };
+      return Page.cmd("fileWrite", [this.getPath(site) + "/posts.json", Text.fileEncode(container)], (res_write) => {
+        Page.content.update();
+        return Page.cmd("sitePublish", { "inner_path": this.getPath(site) + "/content.json" }, (res_pub) => {
+          this.log("savePost", res_write, res_pub);
+          if (typeof cb === "function") {
+            cb(res_write);
+          }
+        });
+      });
+    }
+
+    // Build + sign a NEW version of an existing post (an edit or a tombstone)
+    // and save it. The immutable post_id/nonce/date_added carry over; clock and
+    // supersedes are derived from what is on disk so the merge orders it after
+    // every version this device has seen.
+    editPost(post_id, changes, cb) {
+      if (cb == null) cb = null;
+      return this.getPosts(this.hub, (container) => {
+        var maxClock = 0, orig = null;
+        container.post.forEach((r) => {
+          if (r.post_id === post_id) {
+            if (r.clock > maxClock) {
+              maxClock = r.clock;
+            }
+            if (!orig || (r.clock || 0) >= (orig.clock || 0)) {
+              orig = r;
+            }
+          }
+        });
+        var record = {
+          "post_id": post_id,
+          "nonce": orig && orig.nonce ? orig.nonce : this.randNonce(),
+          "clock": Math.max(maxClock + 1, Date.now()),
+          "supersedes": maxClock,
+          "deleted": changes.deleted === true,
+          "body": changes.deleted ? "" : (changes.body != null ? changes.body : (orig ? orig.body : "")),
+          "date_added": orig ? orig.date_added : Time.timestamp()
+        };
+        if (!changes.deleted) {
+          record["date_edited"] = Time.timestamp();
+          if (orig && orig.meta != null) {
+            record["meta"] = orig.meta;
+          }
+        }
+        return Page.cmd("recordSign", [record], (signed) => {
+          if (!signed || signed.error) {
+            if (cb) cb(signed);
+            return;
+          }
+          return this.savePost(signed, this.hub, (res) => {
+            if (cb) cb(res);
+          });
+        });
+      });
     }
 
     getData(site, cb) {
@@ -431,6 +514,55 @@
       });
     }
 
+    // One-time-ish migration of legacy data.json `post[]` into posts.json.
+    // ADDITIVE and per-post idempotent: signs only legacy posts not already in
+    // posts.json (keeping their legacy post_id for URL/edit continuity), and
+    // NEVER strips data.json.post[] (that LWW write could clobber posts not yet
+    // synced). Runs in the background on load; converges as data syncs.
+    migratePosts(cb) {
+      if (cb == null) cb = null;
+      var done = () => { if (cb) cb(); };
+      return this.getData(this.hub, (data) => {
+        var legacy = (data && data.post) || [];
+        if (!legacy.length) return done();
+        return this.getPosts(this.hub, (container) => {
+          var have = {};
+          container.post.forEach((r) => { have[r.post_id] = true; });
+          var todo = legacy.filter((p) => !have[p.post_id]);
+          if (!todo.length) return done();
+          var signed = [];
+          var i = 0;
+          var signNext = () => {
+            if (i >= todo.length) {
+              // One union-write + one publish for the whole batch.
+              var merged = { "record_format": "epix-orset-1", "post": signed };
+              if (!signed.length) return done();
+              return Page.cmd("fileWrite", [this.getPath(this.hub) + "/posts.json", Text.fileEncode(merged)], () => {
+                Page.content.update();
+                return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, () => done());
+              });
+            }
+            var p = todo[i++];
+            var record = {
+              "post_id": p.post_id,
+              "nonce": this.randNonce(),
+              "clock": 1,
+              "supersedes": 0,
+              "deleted": false,
+              "body": p.body,
+              "date_added": p.date_added
+            };
+            if (p.meta != null) record["meta"] = p.meta;
+            return Page.cmd("recordSign", [record], (s) => {
+              if (s && !s.error) signed.push(s);
+              return signNext();
+            });
+          };
+          return signNext();
+        });
+      });
+    }
+
     post(body, meta, image_base64, cb) {
       if (meta == null) {
         meta = null;
@@ -441,25 +573,35 @@
       if (cb == null) {
         cb = null;
       }
-      return this.getData(this.hub, (data) => {
-        var post;
-        post = {
-          "post_id": Time.timestamp() + data.next_post_id,
-          "body": body,
-          "date_added": Time.timestamp()
-        };
-        if (meta) {
-          post["meta"] = Text.jsonEncode(meta);
+      // A new post is a fresh signed record. The node fills in `author` and the
+      // derived immutable `post_id`, then signs it; savePost union-merges it
+      // into posts.json (never overwriting other posts) and publishes.
+      var record = {
+        "nonce": this.randNonce(),
+        "clock": Date.now(),
+        "supersedes": 0,
+        "deleted": false,
+        "body": body,
+        "date_added": Time.timestamp()
+      };
+      if (meta) {
+        record["meta"] = Text.jsonEncode(meta);
+      }
+      return Page.cmd("recordSign", [record], (signed) => {
+        if (!signed || signed.error) {
+          if (cb) cb(signed);
+          return;
         }
-        data.post.push(post);
-        data.next_post_id += 1;
-        return this.fileWrite(post.post_id + ".jpg", image_base64, (res) => {
-          return this.save(data, this.hub, (res) => {
-            if (cb) {
-              return cb(res);
-            }
+        var afterImage = () => {
+          return this.savePost(signed, this.hub, (res) => {
+            if (cb) cb(res);
           });
-        });
+        };
+        // The image is keyed by the node-derived post_id.
+        if (image_base64) {
+          return this.fileWrite(signed.post_id + ".jpg", image_base64, afterImage);
+        }
+        return afterImage();
       });
     }
 

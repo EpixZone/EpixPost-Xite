@@ -7,9 +7,13 @@
 			"to_json_table": [ "cert_auth_type", "cert_user_id" ],
 			"file_name": "data.json"
 		},
+		".+/data/users/.+/posts.json": {
+			"to_table": [ {"node": "post", "table": "post"} ],
+			"file_name": "data.json",
+			"fold_crdt": "post"
+		},
 		".+/data/users/.+/data.json": {
 			"to_table": [
-				"post",
 				"comment",
 				"follow",
 				"hub_announce",
