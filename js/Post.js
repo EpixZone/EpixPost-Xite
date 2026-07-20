@@ -132,45 +132,16 @@
     }
 
     handlePostSave(body, cb) {
-      return Page.user.getData(Page.user.hub, (data) => {
-        var i, j, len, post, post_index, ref;
-        ref = data.post;
-        for (i = j = 0, len = ref.length; j < len; i = ++j) {
-          post = ref[i];
-          if (post.post_id === this.row.post_id) {
-            post_index = i;
-          }
-        }
-        data.post[post_index].body = body;
-        return Page.user.save(data, Page.user.hub, (res) => {
-          return cb(res);
-        });
-      });
+      // An edit is a new signed version of the same post_id (merge picks the
+      // causally-latest); it can never touch any other post.
+      return Page.user.editPost(this.row.post_id, { body: body }, cb);
     }
 
     handlePostDelete(cb) {
-      return Page.user.getData(Page.user.hub, (data) => {
-        var i, j, len, post, post_index, ref, ref1, ref2;
-        ref = data.post;
-        for (i = j = 0, len = ref.length; j < len; i = ++j) {
-          post = ref[i];
-          if (post.post_id === this.row.post_id) {
-            post_index = i;
-          }
-        }
-        data.post.splice(post_index, 1);
-        if ((ref1 = this.meta) != null ? (ref2 = ref1.meta) != null ? ref2.img : void 0 : void 0) {
-          return Page.cmd("fileDelete", (this.user.getPath()) + "/" + this.row.post_id + ".jpg", () => {
-            return Page.user.save(data, Page.user.hub, (res) => {
-              return cb(res);
-            });
-          });
-        } else {
-          return Page.user.save(data, Page.user.hub, (res) => {
-            return cb(res);
-          });
-        }
-      });
+      // A delete is a signed tombstone, NOT a splice: absence is not deletion
+      // on the network, so only a signed tombstone hides the post. Blast radius
+      // is this one post.
+      return Page.user.editPost(this.row.post_id, { deleted: true }, cb);
     }
 
     handleLikeClick(e) {

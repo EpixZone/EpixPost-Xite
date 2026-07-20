@@ -10,14 +10,26 @@
    ".*": {
     "files_allowed": ".*",
     "max_size": 300000,
-    "max_size_optional": 500000000
+    "max_size_optional": 500000000,
+    "merge_files": {
+     "posts.json": {
+      "class": "epix-orset-1",
+      "max_size": 3000000
+     }
+    }
    }
   },
   "permissions": {
    ".*": {
     "files_allowed": ".*",
     "max_size": 300000,
-    "max_size_optional": 500000000
+    "max_size_optional": 500000000,
+    "merge_files": {
+     "posts.json": {
+      "class": "epix-orset-1",
+      "max_size": 3000000
+     }
+    }
    }
   }
  }
