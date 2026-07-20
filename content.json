@@ -4,7 +4,7 @@
  "background-color": "#FEFEFE",
  "background-color-dark": "#0B0B0D",
  "description": "Social Network",
- "epixnet_version": "0.3.10",
+ "epixnet_version": "0.3.17",
  "favicon": "img/favicon.ico",
  "files": {
   "LICENSE": {
@@ -16,12 +16,12 @@
    "size": 2420
   },
   "css/all.css": {
-   "sha512": "1ebfdcdd92515e1ad33c22af6a9c85d4f20840fcb36fa2ae718680099d054c32",
-   "size": 75225
+   "sha512": "0d36e3d8d86ecb69b2ee8d2acf2a2e957001ff0d2651ddc26a357cf5518e70e0",
+   "size": 76814
   },
   "dbschema.json": {
-   "sha512": "e25e6f84e0568618ceee950b1e665d07403ae3aa0c4f327408879e26f59cda54",
-   "size": 3375
+   "sha512": "637a49cc8082de1b3bd52f5ad5a4219967e932cbe24210e3b7352aa526595ea1",
+   "size": 3509
   },
   "img/default-avatar.svg": {
    "sha512": "94993efde5224b7ee9855dd491672ff6204936b748b8be84d7a55808e6dd38f3",
@@ -68,12 +68,12 @@
    "size": 32078
   },
   "js/ContentProfile.js": {
-   "sha512": "b329bb5f3bffde750f72562963e610356c7d1927ed53c5fe587dfa63941a0d42",
-   "size": 14474
+   "sha512": "3586798a6992de497ad9afb1d249e8bdb43191af7849a77f9e2c19c6ec64a2b0",
+   "size": 15443
   },
   "js/ContentSettings.js": {
-   "sha512": "52e028b74299a13e1b58fbb6ee6f15e57e17bf307841a8479ba57eb985869f09",
-   "size": 7427
+   "sha512": "8fcacf37b1f376478d9ccdc1f51b1e455d1ad0b000bb61ff19e89a561aacc707",
+   "size": 7436
   },
   "js/ContentThread.js": {
    "sha512": "420a33058b51a654bab416b3604ae62d7c4ad1e24ba17d2f30f2f4723dbed0a2",
@@ -84,16 +84,16 @@
    "size": 4766
   },
   "js/EpixPost.js": {
-   "sha512": "81c6e88dc75e67c22a167c358aaf1c7ccbdf97c9c2d7f7594a790385a01fb43f",
-   "size": 23083
+   "sha512": "41d9704712e675084e413b4e7e6b64aa58c883f2d1d83be57ac931d67ad1daaf",
+   "size": 23356
   },
   "js/Onboarding.js": {
-   "sha512": "65060e4d433cb8b42193caee5b6ada79a842e35f0da36ffc0da08ce2ff1c069c",
-   "size": 6429
+   "sha512": "87dd36c32f28c4099b306fb10dc09315a26f6b317bdd0d90de437a71587bc67a",
+   "size": 6438
   },
   "js/Post.js": {
-   "sha512": "cafee17efc9f338190774aeff6efb2d04684b1184ec1ea16a93a1f40dded24ce",
-   "size": 28620
+   "sha512": "9e710904a32ca0dd30d068c6343bbe351500efb0e3d7b6887206792ab2a682ef",
+   "size": 27796
   },
   "js/PostCreate.js": {
    "sha512": "d9f8fb40f42913969f42cd34b2754bdf5b529002cbcc07f6526da6a4aae9c81c",
@@ -112,8 +112,8 @@
    "size": 11195
   },
   "js/User.js": {
-   "sha512": "1ed9e03b6a732b6c84e3cab4cd84fe010e59e18f55b38da4ee919176177d3651",
-   "size": 22838
+   "sha512": "e71b4b8256593e193c46708a030f4fc188a6bac47619e430143e6b4053fddb9a",
+   "size": 28638
   },
   "js/UserList.js": {
    "sha512": "5d4def7f3f928d0e363e097c7681e172147d9c9285be89253bd0d615b48ab633",
@@ -220,53 +220,53 @@
    "size": 5814
   },
   "languages/da.json": {
-   "sha512": "daceb14c55bda156c1aba10e94c63239fd77dac746e7ec39172e8b7cde63ae13",
-   "size": 8810
+   "sha512": "745d4a7d66a021b8da35bfaa4e0401079f47e7b04f8491b2116ae3cbe62c2942",
+   "size": 8832
   },
   "languages/fa.json": {
-   "sha512": "eb13e5cd1c3b935df04ebb4f6b2e2f0fd76735a74782b2b38839cde8e27884d2",
-   "size": 11887
+   "sha512": "3b69ee06c652e47c9e2f1b6f6ca2a458f995c82ed8a7314d6d92059e74d23fb7",
+   "size": 11911
   },
   "languages/fr.json": {
-   "sha512": "6cf92a0d19b2e8925110e1cf937af457bac7060f9fd62dab3afd2cebdafd0827",
-   "size": 9695
+   "sha512": "8a9257f5396766191a07eb8d1bdbd510bceba3bb1af132c3bfd7bb8d62a9e9d7",
+   "size": 9718
   },
   "languages/hu.json": {
-   "sha512": "a5babfeeff611b63cbc23f96f74dcf6470f20279db97711c2687b8f3e425d1a6",
-   "size": 9645
+   "sha512": "d690196005f6ee05936d4ea14e27da3cddbd552f4336c82d1aa597c73aad2a69",
+   "size": 9668
   },
   "languages/it.json": {
-   "sha512": "56e52789d7ce9d34e01e201fc49c7e30db96a116295ab05977a7ee32d9d40f90",
-   "size": 9136
+   "sha512": "a500ad0ba5bbfce183be06f27840274d9c526dee54320a274879cfa23e611681",
+   "size": 9161
   },
   "languages/nl.json": {
-   "sha512": "c585ceea8e5e517fd8d5261d7d00f5f902ffaf801bb62492233a7d737d2ab557",
-   "size": 9190
+   "sha512": "383d8d3dca9476c542a1ed86b25d1627e9857be3e0cf116af1a3034e17446247",
+   "size": 9213
   },
   "languages/pt-br.json": {
-   "sha512": "0741e5a9b53811918949a29fcf2570cff3ff5b42dee8e4651ca5c0ba6ee9b574",
-   "size": 9216
+   "sha512": "6b87de594d8a8f027c01d02357ed9ff2bf3400f32e9caac1a4492843703a5166",
+   "size": 9240
   },
   "languages/sk.json": {
-   "sha512": "e85c7685518b0b051ce1cab6d4cd055d64629ac08136b387488d57bfa35c0a9e",
-   "size": 9478
+   "sha512": "24ae0e9acf4d634e32d31b203ac72da2f60809be6ce1f21255c46bffd53143d5",
+   "size": 9501
   },
   "languages/tr.json": {
-   "sha512": "11491e8e6e91d76088c6a940558328c1bdd471c97db8f656df4825ec742b5e23",
-   "size": 9422
+   "sha512": "96321b1068eea1f6bea21468a208d53ebacf08effb7e7968f93774c413fd7762",
+   "size": 9443
   },
   "languages/zh-tw.json": {
-   "sha512": "40606c4ab47ab945b1f82a6deb26f604cc20422dcc5d014fe36570004adff0aa",
-   "size": 8694
+   "sha512": "d9b743bf04452374ed823fd8869be1d6a977dfc3377ca4aa344016248406f88e",
+   "size": 8716
   },
   "languages/zh.json": {
-   "sha512": "7ce2aa095d91ba33a711ca96e037466980ec2fe398f50852927c34cf1a91cabc",
-   "size": 8664
+   "sha512": "0beae8fbb44c9917dc8767801956cff3e8913ff64b336deb598b6c00d76770a6",
+   "size": 8686
   }
  },
  "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|hub-xite/.*|\\.git)",
  "inner_path": "content.json",
- "modified": 1784348169,
+ "modified": 1784515599,
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -277,7 +277,7 @@
   }
  },
  "signers_sign": "HL3T+I7ncGYH/A5YXm0iKd6JHRWGrCDu+u0/z+n/R9XEB/Oo8Lz9oxN3nG5L0OJ7XMZFs1OmuSsvhTW7YlL/ODY=",
- "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HAZqnmMWfsAmErRu8gtkacqHjZtIvfsuJ5QXidTkZqQgZyaMK07v+un+t9hRX4+BU3YL1X8HJJReC3Yr3kNNkpY="},
+ "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HLg8yA8j+R04IdKto8/Ind0KRC5jD6i8IZlzzyRddB0FPxARL4M9ws8XKQw6XEa8PE4ti/dE9gWCGnoHaXeniLc="},
  "signs_required": 1,
  "title": "Epix Post",
  "translate": ["index.html","js/EpixPost.js","js/Shell.js","js/Onboarding.js","js/ComposerModal.js","js/User.js","js/Post.js","js/PostCreate.js","js/PostList.js","js/PostMeta.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentCreateProfile.js","js/ContentUsers.js","js/ContentHubs.js","js/ContentThread.js","js/ContentSettings.js","js/ActivityList.js","js/UserList.js","js/utils/Text.js","js/utils/Translate.js","js/utils/HubActions.js","js/AnonUser.js","js/utils/Uploadable.js"],
