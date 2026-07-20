@@ -916,7 +916,26 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 	width: 100%; box-sizing: border-box; padding-right: 80px; background-color: var(--epix-surface);
 	min-height: 42px
 }
-.comment-create .button-submit { position: absolute; right: 8px; bottom: 16px }
+/* Center the Reply button on the textarea box. top/bottom match the container
+   padding (6/10) so the vertical span equals the textarea, and margin auto
+   centers the button in it - stays centered at any box height (the old
+   bottom:16px only centered an exactly-42px box, so it hung low when taller).
+   A fixed compact height WITH min-height beats the `(pointer: coarse)`
+   `min-height: 44px` touch rule that otherwise balloons the button on phones,
+   so it's the same size on every resolution; inline-flex centers the label. */
+.comment-create .button-submit {
+	position: absolute; right: 8px;
+	/* Center on the textarea. The container's padding is 6px top / 10px bottom,
+	   so its own midpoint sits 2px below the textarea's center - subtract that
+	   2px so the button lands exactly on the field's center at any box height. */
+	top: calc(50% - 2px); transform: translateY(-50%);
+	height: 34px; min-height: 34px;
+	display: inline-flex; align-items: center; justify-content: center;
+}
+/* The reply-create variant has a "Replying to" line above the textarea, so the
+   textarea isn't flush with the top - bottom-anchor that button instead
+   (14px = 10px bottom padding + centering a 34px button in the 42px field). */
+.comment-create.reply-create .button-submit { top: auto; transform: none; bottom: 14px }
 .comment-list .more { padding: 8px; font-size: 13px }
 
 /* threading */
