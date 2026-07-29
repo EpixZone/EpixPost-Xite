@@ -18,6 +18,18 @@
   }
  },
  "description": "Social Network",
+ "distribution": {
+  "default": {
+   "retention": "complete",
+   "unit": "package"
+  },
+  "paths": {
+   "data/users/": {
+    "retention": "partial",
+    "unit": "feed"
+   }
+  }
+ },
  "edx": 1,
  "epixnet_version": "0.3.28",
  "favicon": "img/favicon.ico",
@@ -475,6 +487,60 @@
  "ignore": "(merged-.*|data/users/.*|css/(?!all\\.css)|hub-xite/.*|\\.git)",
  "inner_path": "content.json",
  "modified": 1785266589,
+ "order_policy": {
+  "first_paint": [
+   "index.html",
+   "img/favicon.ico",
+   "css/all.css",
+   "js/lib/maquette.js",
+   "js/lib/anime.min.js",
+   "js/lib/marked.min.js",
+   "js/lib/clone.js",
+   "js/lib/epixframe.js",
+   "js/utils/LogMixin.js",
+   "js/utils/Deferred.js",
+   "js/utils/Dollar.js",
+   "js/utils/Prototypes.js",
+   "js/utils/RateLimit.js",
+   "js/utils/Animation.js",
+   "js/utils/Time.js",
+   "js/utils/Translate.js",
+   "js/utils/Debug.js",
+   "js/utils/Text.js",
+   "js/utils/Autosize.js",
+   "js/utils/Editable.js",
+   "js/utils/ImagePreview.js",
+   "js/utils/ItemList.js",
+   "js/utils/Maxheight.js",
+   "js/utils/Menu.js",
+   "js/utils/Overlay.js",
+   "js/utils/Scrollwatcher.js",
+   "js/utils/Uploadable.js",
+   "js/utils/HubActions.js",
+   "js/AnonUser.js",
+   "js/User.js",
+   "js/UserList.js",
+   "js/PostMeta.js",
+   "js/PostCreate.js",
+   "js/ComposerModal.js",
+   "js/Post.js",
+   "js/PostList.js",
+   "js/ActivityList.js",
+   "js/Shell.js",
+   "js/Onboarding.js",
+   "js/ContentCreateProfile.js",
+   "js/ContentFeed.js",
+   "js/ContentProfile.js",
+   "js/ContentThread.js",
+   "js/ContentUsers.js",
+   "js/ContentHubs.js",
+   "js/ContentSettings.js",
+   "js/EpixPost.js"
+  ],
+  "prefetch": [
+   "dbschema.json"
+  ]
+ },
  "postmessage_nonce_security": true,
  "settings": {
   "default_hubs": {
@@ -485,9 +551,36 @@
   }
  },
  "signers_sign": "HL3T+I7ncGYH/A5YXm0iKd6JHRWGrCDu+u0/z+n/R9XEB/Oo8Lz9oxN3nG5L0OJ7XMZFs1OmuSsvhTW7YlL/ODY=",
- "signs": {"epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HDKunciG2iT7x/HxVeaQZH62wk5dpIMy2L5TCMDFV9lva2uGcEreJWt8k7J1LMBEYmYDlt97y80uBwaSmIQljcM="},
+ "signs": {
+  "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm": "HDKunciG2iT7x/HxVeaQZH62wk5dpIMy2L5TCMDFV9lva2uGcEreJWt8k7J1LMBEYmYDlt97y80uBwaSmIQljcM="
+ },
  "signs_required": 1,
  "title": "Epix Post",
- "translate": ["index.html","js/EpixPost.js","js/Shell.js","js/Onboarding.js","js/ComposerModal.js","js/User.js","js/Post.js","js/PostCreate.js","js/PostList.js","js/PostMeta.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentCreateProfile.js","js/ContentUsers.js","js/ContentHubs.js","js/ContentThread.js","js/ContentSettings.js","js/ActivityList.js","js/UserList.js","js/utils/Text.js","js/utils/Translate.js","js/utils/HubActions.js","js/AnonUser.js","js/utils/Uploadable.js"],
+ "translate": [
+  "index.html",
+  "js/EpixPost.js",
+  "js/Shell.js",
+  "js/Onboarding.js",
+  "js/ComposerModal.js",
+  "js/User.js",
+  "js/Post.js",
+  "js/PostCreate.js",
+  "js/PostList.js",
+  "js/PostMeta.js",
+  "js/ContentFeed.js",
+  "js/ContentProfile.js",
+  "js/ContentCreateProfile.js",
+  "js/ContentUsers.js",
+  "js/ContentHubs.js",
+  "js/ContentThread.js",
+  "js/ContentSettings.js",
+  "js/ActivityList.js",
+  "js/UserList.js",
+  "js/utils/Text.js",
+  "js/utils/Translate.js",
+  "js/utils/HubActions.js",
+  "js/AnonUser.js",
+  "js/utils/Uploadable.js"
+ ],
  "viewport": "width=device-width, initial-scale=1"
 }

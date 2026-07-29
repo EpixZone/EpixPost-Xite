@@ -4,6 +4,23 @@
  "cloneable": true,
  "description": "",
  "epixnet_version": "0.0.3",
+ "feeds": {
+  "posts": {
+   "clock_unit": "s",
+   "files": "data/users/*/posts.json",
+   "kind": {
+    "default": "post"
+   },
+   "map": {
+    "author": "author",
+    "clock": "date_added",
+    "id": "post_id",
+    "target": null
+   },
+   "record_format": "epix-orset-1",
+   "record_key": "post"
+  }
+ },
  "ignore": "",
  "includes": {
   "data/users/content.json": {
