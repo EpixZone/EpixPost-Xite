@@ -16,6 +16,7 @@
       this.getHubTitle = this.getHubTitle.bind(this);
       this.resolveXidProfiles = this.resolveXidProfiles.bind(this);
       this.needSite = this.needSite.bind(this);
+      this.requestMergerPermission = this.requestMergerPermission.bind(this);
       this.updateSiteInfo = this.updateSiteInfo.bind(this);
       this.updateContentNoanim = this.updateContentNoanim.bind(this);
       this.onOpenWebsocket = this.onOpenWebsocket.bind(this);
@@ -57,8 +58,19 @@
       this.on_user_info.then(() => {
         this.setLoadingProgress(75, _("Loading feed..."));
       });
-      // The Merger permission is no longer requested automatically on boot:
-      // the onboarding card on the feed asks for it as its first step.
+      // Ask for the Merger permission as soon as site info lands, rather than
+      // waiting for the onboarding card's button. Without it no hub can be
+      // added, so the feed is empty and every later onboarding step is
+      // blocked - a visitor who does not notice the card just sees a dead
+      // app. The wrapper draws its own grant dialog and answers immediately
+      // when the permission is already held, so this is a no-op on every
+      // visit after the grant. The card stays as the way back for anyone who
+      // dismisses the dialog.
+      this.on_site_info.then(() => {
+        if (this.site_info.settings.permissions.indexOf("Merger:EpixPost") < 0) {
+          this.requestMergerPermission();
+        }
+      });
     }
 
     createProjector() {
@@ -313,6 +325,31 @@
       if (this.content) {
         this.content.update("noanim");
       }
+    }
+
+    // Ask the wrapper for the Merger permission and pick the feed back up
+    // once it is granted. Shared by the boot prompt and the onboarding card's
+    // button so the two paths cannot drift apart.
+    requestMergerPermission(cb) {
+      this.cmd("wrapperPermissionAdd", "Merger:EpixPost", () => {
+        // Always re-query: older nodes do not push siteInfo on grant.
+        this.updateSiteInfo(() => {
+          if (this.site_info.cert_user_id && !(this.user != null ? this.user.hub : void 0)) {
+            // A certificate was selected before the grant: re-run the user
+            // check so xID profiles get auto-created on the fresh hub data.
+            this.checkUser(() => {
+              if (this.content) {
+                this.content.update();
+              }
+            });
+          } else if (this.content) {
+            this.content.update();
+          }
+          if (typeof cb === "function") {
+            cb();
+          }
+        });
+      });
     }
 
     needSite(address, cb) {
