@@ -16,6 +16,8 @@
       this.getHubTitle = this.getHubTitle.bind(this);
       this.resolveXidProfiles = this.resolveXidProfiles.bind(this);
       this.needSite = this.needSite.bind(this);
+      this.noteHubProgress = this.noteHubProgress.bind(this);
+      this.hubSyncActive = this.hubSyncActive.bind(this);
       this.requestMergerPermission = this.requestMergerPermission.bind(this);
       this.updateSiteInfo = this.updateSiteInfo.bind(this);
       this.updateContentNoanim = this.updateContentNoanim.bind(this);
@@ -28,6 +30,11 @@
     init() {
       this.params = {};
       this.merged_sites = {};
+      // Live download of a hub we merged: see noteHubProgress. Cleared by
+      // going quiet, so this is how long without an event counts as finished.
+      this.HUB_SYNC_IDLE = 15000;
+      this.hub_sync = null;
+      this.hub_sync_timer = null;
       this.site_info = null;
       this.server_info = null;
       this.address = null;
@@ -607,7 +614,58 @@
       }
     }
 
+    // A hub the node is downloading for us. The node pushes a merged site's
+    // events to its merger's page, so these arrive here for an address that is
+    // not ours - the only signal a merger gets that a hub it just added is
+    // still coming down. Without it the feed is simply empty for the whole
+    // download and reads as broken.
+    //
+    // `tasks`/`started_task_num` are only meaningful while the hub's own file
+    // set is downloading; the per-user content and the post records that
+    // follow have no denominator, so the bar falls back to indeterminate and
+    // the honest numbers (files landed, peers serving) carry the message.
+    noteHubProgress(site_info) {
+      if (site_info.address === this.address || !site_info.event) {
+        return;
+      }
+      var sync = this.hub_sync;
+      if (!sync || sync.address !== site_info.address) {
+        sync = this.hub_sync = { address: site_info.address, files: 0 };
+      }
+      sync.at = Date.now();
+      sync.peers = site_info.peers_serving || site_info.peers || 0;
+      if (site_info.started_task_num > 0) {
+        sync.tasks = site_info.tasks;
+        sync.total = site_info.started_task_num;
+      } else {
+        sync.total = 0;
+      }
+      if (site_info.event[0] === "file_done") {
+        sync.files += 1;
+        sync.last = site_info.event[1];
+      }
+      // One pending timer, re-armed on every event: when the events stop the
+      // indicator has to take itself down.
+      if (this.hub_sync_timer) {
+        clearTimeout(this.hub_sync_timer);
+      }
+      this.hub_sync_timer = setTimeout(() => {
+        this.hub_sync_timer = null;
+        this.projector.scheduleRender();
+      }, this.HUB_SYNC_IDLE + 500);
+      RateLimit(500, this.updateContentNoanim);
+    }
+
+    // Whether a hub download is still live: events stopped arriving less than
+    // HUB_SYNC_IDLE ago. There is no "clone finished" event to key off, so
+    // going quiet is the signal.
+    hubSyncActive() {
+      var sync = this.hub_sync;
+      return !!(sync && Date.now() - sync.at < this.HUB_SYNC_IDLE);
+    }
+
     setSiteInfo(site_info) {
+      this.noteHubProgress(site_info);
       if (site_info.address === this.address) {
         var had_permission = this.site_info == null || this.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0;
         if (!this.site_info) {
