@@ -79,20 +79,9 @@
         return false;
       }
       if (!state.perm) {
-        Page.cmd("wrapperPermissionAdd", "Merger:EpixPost", () => {
-          // Always re-query: older nodes do not push siteInfo on grant
-          Page.updateSiteInfo(() => {
-            if (Page.site_info.cert_user_id && !(Page.user != null ? Page.user.hub : void 0)) {
-              // A certificate was selected before the grant: re-run the user
-              // check so xID profiles get auto-created on the fresh hub data
-              Page.checkUser(() => {
-                Page.content.update();
-              });
-            } else {
-              Page.content.update();
-            }
-          });
-        });
+        // Same request the boot prompt makes - this is the way back for a
+        // visitor who dismissed that dialog.
+        Page.requestMergerPermission();
       } else if (!state.cert) {
         Page.cmd("certXid", {});
       } else if (!state.profile && !state.cert_is_xid) {
