@@ -4,7 +4,6 @@
     constructor() {
       this.update = this.update.bind(this);
       this.render = this.render.bind(this);
-      this.renderHubSync = this.renderHubSync.bind(this);
       this.handleListTypeClick = this.handleListTypeClick.bind(this);
       this.handleHubMenuClick = this.handleHubMenuClick.bind(this);
       this.onboarding = new Onboarding();
@@ -96,40 +95,6 @@
       this.activity_list.limit = 10;
       this.update();
       return false;
-    }
-
-    // A hub the node is still downloading. Sits above the timeline so the wait
-    // has something to show for itself: the feed fills in behind it as records
-    // land, and it takes itself down when the events stop.
-    //
-    // The bar is only determinate while the hub's own file set is coming down
-    // (started_task_num); the per-user content and post records that follow
-    // have no known total, so it falls back to a moving indeterminate bar
-    // rather than inventing a percentage.
-    renderHubSync() {
-      if (!Page.hubSyncActive()) {
-        return void 0;
-      }
-      var sync = Page.hub_sync;
-      var pct = sync.total > 0 ? Math.round(((sync.total - (sync.tasks || 0)) / sync.total) * 100) : null;
-      var count = sync.files + " " + (sync.files === 1 ? _("file") : _("files"));
-      if (sync.peers) {
-        count += " · " + sync.peers + " " + (sync.peers === 1 ? _("peer") : _("peers"));
-      }
-      return h("div.hub-sync", { key: "hub-sync" }, [
-        h("div.hub-sync-head", [
-          h("span.spinner"),
-          h("span.hub-sync-title", _("Downloading") + " " + Page.getHubTitle(sync.address)),
-          h("span.hub-sync-count", count)
-        ]),
-        h("div.hub-sync-bar",
-          h("div.hub-sync-bar-fill", {
-            classes: { indeterminate: pct === null },
-            styles: pct === null ? {} : { width: pct + "%" }
-          })
-        ),
-        sync.last ? h("div.hub-sync-file", sync.last) : void 0
-      ]);
     }
 
     render() {
@@ -254,7 +219,6 @@
               this.hub_menu.render(".menu-right")
             ])
           ]),
-          this.renderHubSync(),
           this.post_list.render()
         ]),
         h("div.col-right.noscrollfix", [
