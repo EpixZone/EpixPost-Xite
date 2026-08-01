@@ -286,9 +286,19 @@
       }
       var sync = Page.hub_sync;
       var pct = sync.total > 0 ? Math.round(((sync.total - (sync.tasks || 0)) / sync.total) * 100) : null;
-      var count = sync.files + " " + (sync.files === 1 ? _("file") : _("files"));
-      if (sync.peers) {
-        count += " · " + sync.peers + " " + (sync.peers === 1 ? _("peer") : _("peers"));
+      // Before the first file there is nothing to count: the node is still
+      // dialing the hub's peers (tens of seconds over Tor). Say that, rather
+      // than a frozen "0 files".
+      var connecting = !sync.files;
+      var title = connecting
+        ? _("Connecting to") + " " + Page.getHubTitle(sync.address) + "..."
+        : _("Downloading") + " " + Page.getHubTitle(sync.address);
+      var count = "";
+      if (!connecting) {
+        count = sync.files + " " + (sync.files === 1 ? _("file") : _("files"));
+        if (sync.peers) {
+          count += " · " + sync.peers + " " + (sync.peers === 1 ? _("peer") : _("peers"));
+        }
       }
       return h("div.hub-sync", { key: "hub-sync" }, [
         h("div.hub-sync-bar",
@@ -299,7 +309,7 @@
         ),
         h("div.hub-sync-body", [
           h("span.spinner"),
-          h("span.hub-sync-title", _("Downloading") + " " + Page.getHubTitle(sync.address)),
+          h("span.hub-sync-title", title),
           h("span.hub-sync-file", sync.last || ""),
           h("span.hub-sync-count", count)
         ])
