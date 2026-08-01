@@ -33,6 +33,12 @@
       // Live download of a hub we merged: see noteHubProgress. Cleared by
       // going quiet, so this is how long without an event counts as finished.
       this.HUB_SYNC_IDLE = 15000;
+      // The longer window used while we KNOW more is coming but nothing has
+      // landed yet: right after mergerSiteAdd (peers still being dialed) and
+      // after a file_added marker (a fetch pass just started). Dialing a
+      // fresh hub's peers over Tor is routinely 30-60s of dead air; with only
+      // the short idle the bar flapped on and off through every pass.
+      this.HUB_SYNC_WAIT = 120000;
       this.hub_sync = null;
       this.hub_sync_timer = null;
       this.site_info = null;
@@ -74,7 +80,7 @@
       // visit after the grant. The card stays as the way back for anyone who
       // dismisses the dialog.
       this.on_site_info.then(() => {
-        if (this.site_info.settings.permissions.indexOf("Merger:EpixPost") < 0) {
+        if (this.sitePermissions().indexOf("Merger:EpixPost") < 0) {
           this.requestMergerPermission();
         }
       });
@@ -292,6 +298,16 @@
       });
     }
 
+    // The granted permission list, [] until a full siteInfo has landed. The
+    // node also pushes MINIMAL setSiteInfo events (a mid-clone progress shape
+    // whose settings is just {size: 0}); reading .permissions off those threw
+    // and killed whatever handler did it - notably the boot-time permission
+    // prompt, which then never appeared.
+    sitePermissions() {
+      var settings = (this.site_info != null ? this.site_info.settings : void 0) || {};
+      return settings.permissions || [];
+    }
+
     updateSiteInfo(cb) {
       if (cb == null) cb = null;
       var on_site_info = new Deferred();
@@ -301,7 +317,7 @@
       this.cmd("mergerSiteList", true, (merged_sites) => {
         this.merged_sites = merged_sites;
         on_site_info.then(() => {
-          if (this.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0) {
+          if (this.sitePermissions().indexOf("Merger:EpixPost") >= 0) {
             var default_hubs = (this.site_info.content != null ? (this.site_info.content.settings != null ? this.site_info.content.settings.default_hubs : void 0) : void 0) || {};
             // Auto-add waits for local storage: hubs the user explicitly
             // removed (Stop seeding / Leave hub on the Hubs page) are
@@ -311,6 +327,7 @@
               for (var address in default_hubs) {
                 if (!this.merged_sites[address] && !removed_hubs[address]) {
                   this.log("Auto-adding default hub", address);
+                  this.beginHubSync(address);
                   this.cmd("mergerSiteAdd", address);
                 }
               }
@@ -364,6 +381,7 @@
       if (this.merged_sites[address]) {
         if (typeof cb === "function") cb(true);
       } else {
+        this.beginHubSync(address);
         Page.cmd("mergerSiteAdd", address, cb);
       }
     }
@@ -628,7 +646,20 @@
       if (site_info.address === this.address || !site_info.event) {
         return;
       }
+      var kind = site_info.event[0];
+      var is_file = kind === "file_done" || kind === "file_added" || kind === "file_failed";
       var sync = this.hub_sync;
+      // Only file traffic is download activity. The announce loop pushes
+      // peers_added for a merged site every few seconds indefinitely; letting
+      // those re-arm the idle timer kept the bar up forever, frozen on the
+      // last file name. They may refresh the peer count of a LIVE download,
+      // nothing more.
+      if (!is_file) {
+        if (sync && sync.address === site_info.address && this.hubSyncActive()) {
+          sync.peers = site_info.peers_serving || site_info.peers || sync.peers;
+        }
+        return;
+      }
       if (!sync || sync.address !== site_info.address) {
         sync = this.hub_sync = { address: site_info.address, files: 0 };
       }
@@ -640,40 +671,80 @@
       } else {
         sync.total = 0;
       }
-      if (site_info.event[0] === "file_done") {
+      if (kind === "file_done") {
         sync.files += 1;
         sync.last = site_info.event[1];
+        sync.waiting = false;
+      } else if (kind === "file_added") {
+        // A fetch pass just started: more files are coming, but dialing the
+        // peers first can be a long silence. Hold the bar through it.
+        sync.waiting = true;
       }
-      // One pending timer, re-armed on every event: when the events stop the
-      // indicator has to take itself down.
+      this.armHubSyncTimer();
+      RateLimit(500, this.updateContentNoanim);
+    }
+
+    // The bar has to take itself down when the events stop; one pending
+    // timer, re-armed on every event, does it.
+    armHubSyncTimer() {
       if (this.hub_sync_timer) {
         clearTimeout(this.hub_sync_timer);
       }
       this.hub_sync_timer = setTimeout(() => {
         this.hub_sync_timer = null;
         this.projector.scheduleRender();
-      }, this.HUB_SYNC_IDLE + 500);
-      RateLimit(500, this.updateContentNoanim);
+      }, this.hubSyncWindow() + 500);
     }
 
-    // Whether a hub download is still live: events stopped arriving less than
-    // HUB_SYNC_IDLE ago. There is no "clone finished" event to key off, so
-    // going quiet is the signal.
+    // How long after the last event the download still counts as live: the
+    // short idle normally, the long wait while we know more is coming
+    // (connecting after mergerSiteAdd, or a just-announced fetch pass).
+    hubSyncWindow() {
+      var sync = this.hub_sync;
+      if (sync && ((sync.connecting && !sync.files) || sync.waiting)) {
+        return this.HUB_SYNC_WAIT;
+      }
+      return this.HUB_SYNC_IDLE;
+    }
+
+    // A hub download starts with mergerSiteAdd, not with its first file
+    // event: the node dials the hub's peers first, which over Tor is tens of
+    // seconds with no events at all. Showing nothing for that stretch made
+    // the app read as broken (and the empty feed as "no posts").
+    beginHubSync(address) {
+      if (address === this.address) {
+        return;
+      }
+      this.hub_sync = { address: address, files: 0, connecting: true, at: Date.now() };
+      this.armHubSyncTimer();
+      this.projector.scheduleRender();
+    }
+
+    // Whether a hub download is still live: events stopped arriving less
+    // than the active window ago. There is no "clone finished" event to key
+    // off, so going quiet is the signal.
     hubSyncActive() {
       var sync = this.hub_sync;
-      return !!(sync && Date.now() - sync.at < this.HUB_SYNC_IDLE);
+      return !!(sync && Date.now() - sync.at < this.hubSyncWindow());
     }
 
     setSiteInfo(site_info) {
       this.noteHubProgress(site_info);
       if (site_info.address === this.address) {
-        var had_permission = this.site_info == null || this.site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0;
-        if (!this.site_info) {
+        // Minimal progress events (settings without a permissions list) must
+        // not become this.site_info: they would erase the granted permissions
+        // for every later read. Only a full payload is stored or resolves the
+        // boot deferred; the events on it below still process either way.
+        var full = site_info.settings != null && site_info.settings.permissions != null;
+        var had_permission = this.site_info == null || this.sitePermissions().indexOf("Merger:EpixPost") >= 0;
+        if (!this.site_info && full) {
           this.site_info = site_info;
           this.on_site_info.resolve();
         }
-        this.site_info = site_info;
-        var has_permission = site_info.settings != null ? site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0 : false;
+        if (full) {
+          this.site_info = site_info;
+        }
+        var has_permission = full ? site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0 : false;
         if (!had_permission && has_permission) {
           // Merger permission just got granted (patched nodes push siteInfo on
           // grant): reload merged sites so the feed populates without a reload.
