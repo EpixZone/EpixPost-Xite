@@ -271,6 +271,41 @@
       ]);
     }
 
+    // A hub the node is still downloading, pinned to the bottom of the page.
+    // Rendered from the shell rather than the feed so it shows wherever the
+    // user happens to be while the hub comes down, and so the timeline can
+    // fill in behind it without the card shoving posts around as they land.
+    //
+    // The bar is only determinate while the hub's own file set is coming down
+    // (started_task_num); the per-user content and post records that follow
+    // have no known total, so it falls back to a moving indeterminate bar
+    // rather than inventing a percentage.
+    renderHubSync() {
+      if (!Page.hubSyncActive()) {
+        return void 0;
+      }
+      var sync = Page.hub_sync;
+      var pct = sync.total > 0 ? Math.round(((sync.total - (sync.tasks || 0)) / sync.total) * 100) : null;
+      var count = sync.files + " " + (sync.files === 1 ? _("file") : _("files"));
+      if (sync.peers) {
+        count += " · " + sync.peers + " " + (sync.peers === 1 ? _("peer") : _("peers"));
+      }
+      return h("div.hub-sync", { key: "hub-sync" }, [
+        h("div.hub-sync-bar",
+          h("div.hub-sync-bar-fill", {
+            classes: { indeterminate: pct === null },
+            styles: pct === null ? {} : { width: pct + "%" }
+          })
+        ),
+        h("div.hub-sync-body", [
+          h("span.spinner"),
+          h("span.hub-sync-title", _("Downloading") + " " + Page.getHubTitle(sync.address)),
+          h("span.hub-sync-file", sync.last || ""),
+          h("span.hub-sync-count", count)
+        ])
+      ]);
+    }
+
     render() {
       return h("div#Shell", [
         this.renderRail(),
@@ -281,7 +316,8 @@
           title: _("New post"),
           onclick: this.handleComposeClick
         }, h("span.icon.icon-compose")),
-        this.composer.render()
+        this.composer.render(),
+        this.renderHubSync()
       ]);
     }
   }
