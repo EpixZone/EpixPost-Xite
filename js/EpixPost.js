@@ -674,11 +674,13 @@
       if (kind === "file_done") {
         sync.files += 1;
         sync.last = site_info.event[1];
-        sync.waiting = false;
+        sync.dialing = false;
       } else if (kind === "file_added") {
         // A fetch pass just started: more files are coming, but dialing the
-        // peers first can be a long silence. Hold the bar through it.
-        sync.waiting = true;
+        // peers first can be a long silence. Hold the bar through it, and say
+        // "connecting" rather than leaving the previous file's name up - a
+        // stale name sitting there is what reads as a stuck download.
+        sync.dialing = true;
       }
       this.armHubSyncTimer();
       RateLimit(500, this.updateContentNoanim);
@@ -701,7 +703,7 @@
     // (connecting after mergerSiteAdd, or a just-announced fetch pass).
     hubSyncWindow() {
       var sync = this.hub_sync;
-      if (sync && ((sync.connecting && !sync.files) || sync.waiting)) {
+      if (sync && sync.dialing) {
         return this.HUB_SYNC_WAIT;
       }
       return this.HUB_SYNC_IDLE;
@@ -715,7 +717,7 @@
       if (address === this.address) {
         return;
       }
-      this.hub_sync = { address: address, files: 0, connecting: true, at: Date.now() };
+      this.hub_sync = { address: address, files: 0, dialing: true, at: Date.now() };
       this.armHubSyncTimer();
       this.projector.scheduleRender();
     }

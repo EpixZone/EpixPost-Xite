@@ -294,6 +294,13 @@
         ? _("Connecting to") + " " + Page.getHubTitle(sync.address) + "..."
         : _("Downloading") + " " + Page.getHubTitle(sync.address);
       var count = "";
+      // A later pass dials again before its files land. Leaving the previous
+      // file's name up through that gap is what reads as a stuck download, so
+      // say what is actually happening.
+      var file = "";
+      if (!connecting) {
+        file = sync.dialing ? _("Connecting to peers...") : sync.last || "";
+      }
       if (!connecting) {
         count = sync.files + " " + (sync.files === 1 ? _("file") : _("files"));
         if (sync.peers) {
@@ -310,7 +317,7 @@
         h("div.hub-sync-body", [
           h("span.spinner"),
           h("span.hub-sync-title", title),
-          h("span.hub-sync-file", sync.last || ""),
+          h("span.hub-sync-file", file),
           h("span.hub-sync-count", count)
         ])
       ]);
