@@ -39,6 +39,13 @@
       // fresh hub's peers over Tor is routinely 30-60s of dead air; with only
       // the short idle the bar flapped on and off through every pass.
       this.HUB_SYNC_WAIT = 120000;
+      // A hub we asked the node to add stays "downloading" until the node
+      // says the add is over (a `site_done` event), not until its events go
+      // quiet. A real download's own gaps - a slow file mid-clone, the dial
+      // before the user-content pass - run longer than any sane idle timeout,
+      // and dropping the bar in one of those gaps showed an empty feed that
+      // looked finished. This cap only guards against a lost signal.
+      this.HUB_SYNC_MAX = 900000;
       this.hub_sync = null;
       this.hub_sync_timer = null;
       this.site_info = null;
@@ -649,6 +656,13 @@
       var kind = site_info.event[0];
       var is_file = kind === "file_done" || kind === "file_added" || kind === "file_failed";
       var sync = this.hub_sync;
+      // The node finished adding this hub (success or failure). That is the
+      // only trustworthy "done" - take the bar down now and pick up whatever
+      // landed, instead of waiting out an idle timer.
+      if (kind === "site_done") {
+        this.endHubSync(site_info.address);
+        return;
+      }
       // Only file traffic is download activity. The announce loop pushes
       // peers_added for a merged site every few seconds indefinitely; letting
       // those re-arm the idle timer kept the bar up forever, frozen on the
@@ -692,10 +706,17 @@
       if (this.hub_sync_timer) {
         clearTimeout(this.hub_sync_timer);
       }
+      var sync = this.hub_sync;
+      var delay = this.hubSyncWindow();
+      // An add we started ends on the node's signal, so the only timer worth
+      // holding is the one that clears the bar if that signal never comes.
+      if (sync && sync.adding) {
+        delay = Math.max(0, sync.started + this.HUB_SYNC_MAX - Date.now());
+      }
       this.hub_sync_timer = setTimeout(() => {
         this.hub_sync_timer = null;
         this.projector.scheduleRender();
-      }, this.hubSyncWindow() + 500);
+      }, delay + 500);
     }
 
     // How long after the last event the download still counts as live: the
@@ -717,17 +738,53 @@
       if (address === this.address) {
         return;
       }
-      this.hub_sync = { address: address, files: 0, dialing: true, at: Date.now() };
+      // `adding` marks a download WE asked for: it stays live until the node
+      // closes it, so a gap mid-download cannot make it look finished.
+      this.hub_sync = {
+        address: address,
+        files: 0,
+        dialing: true,
+        adding: true,
+        started: Date.now(),
+        at: Date.now()
+      };
       this.armHubSyncTimer();
       this.projector.scheduleRender();
     }
 
-    // Whether a hub download is still live: events stopped arriving less
-    // than the active window ago. There is no "clone finished" event to key
-    // off, so going quiet is the signal.
+    // The node reported the add for `address` finished: drop the bar and
+    // re-read the feed, since the records only reach the merger's db when the
+    // node rebuilds it at the end of the add.
+    endHubSync(address) {
+      var sync = this.hub_sync;
+      if (!sync || sync.address !== address) {
+        return;
+      }
+      this.hub_sync = null;
+      if (this.hub_sync_timer) {
+        clearTimeout(this.hub_sync_timer);
+        this.hub_sync_timer = null;
+      }
+      this.updateSiteInfo(() => {
+        if (this.content) {
+          this.content.update();
+        }
+      });
+    }
+
+    // Whether a hub download is still live. While the node is adding the hub
+    // it is live by definition - the node closes it with `site_done`. Only a
+    // sync we did not start (or one whose signal never arrived, past the cap)
+    // falls back to inferring it from event silence.
     hubSyncActive() {
       var sync = this.hub_sync;
-      return !!(sync && Date.now() - sync.at < this.hubSyncWindow());
+      if (!sync) {
+        return false;
+      }
+      if (sync.adding && Date.now() - sync.started < this.HUB_SYNC_MAX) {
+        return true;
+      }
+      return Date.now() - sync.at < this.hubSyncWindow();
     }
 
     setSiteInfo(site_info) {
