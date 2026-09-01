@@ -89,7 +89,12 @@
           return Page.projector.scheduleRender();
         });
         this.default_hubs = [];
-        var ref = Page.site_info.content.settings.default_hubs;
+        // Guarded: minimal setSiteInfo shapes carry no content.settings, and
+        // reading through it raw throws (see EpixPost.autoCreateXidProfile).
+        var site_content = Page.site_info != null ? Page.site_info.content : null;
+        var ref = (site_content != null && site_content.settings != null)
+          ? site_content.settings.default_hubs
+          : null;
         for (var address in ref) {
           var content = ref[address];
           if (!sites[address] && !this.downloading[address]) {

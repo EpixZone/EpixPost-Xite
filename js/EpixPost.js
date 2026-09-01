@@ -558,7 +558,18 @@
       if (cb == null) cb = null;
       this.log("Auto-creating hub data for xID user...");
       var default_hub = null;
-      var ref = this.site_info.content.settings.default_hubs;
+      // Guarded like every other read of this path (see updateSiteInfo): the
+      // node pushes MINIMAL setSiteInfo shapes before a xite's content.json is
+      // loaded, and `content.settings` is absent on those. Reading through it
+      // raw threw here and killed the boot chain, so the page sat on
+      // "Checking your account..." forever - and stayed stuck even once the
+      // real content arrived, because nothing retried. Falling through to the
+      // existing "no default hub" path lets boot finish; the next full
+      // setSiteInfo re-runs this with real settings.
+      var content = this.site_info != null ? this.site_info.content : null;
+      var ref = (content != null && content.settings != null)
+        ? content.settings.default_hubs
+        : null;
       for (var address in ref) {
         default_hub = address;
         break;
