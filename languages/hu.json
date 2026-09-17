@@ -176,5 +176,10 @@
 	"Verified": "Ellenőrzött",
 	"Leave hub": "Hub elhagyása",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Elhagyod ezt a hubot? A bejegyzéseid a hubon maradnak, és ott lesznek, ha újra csatlakozol.",
-	"Show only posts from this hub": "Csak ennek a hubnak a bejegyzései"
+	"Show only posts from this hub": "Csak ennek a hubnak a bejegyzései",
+	"Sending...": "Küldés...",
+	"Publishing...": "Közzététel...",
+	"Published": "Közzétéve",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Mentve ezen a csomóponton, de még egy peer sem fogadta el. A következő szinkronizáláskor újra próbálja.",
+	"Could not save your reply:": "Nem sikerült menteni a válaszod:"
 }

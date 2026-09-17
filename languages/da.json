@@ -176,5 +176,10 @@
 	"Verified": "Bekræftet",
 	"Leave hub": "Forlad hub",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Forlad denne hub? Dine indlæg bliver på hubben og er der stadig, hvis du vender tilbage.",
-	"Show only posts from this hub": "Vis kun indlæg fra denne hub"
+	"Show only posts from this hub": "Vis kun indlæg fra denne hub",
+	"Sending...": "Sender...",
+	"Publishing...": "Udgiver...",
+	"Published": "Udgivet",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Gemt på denne node, men ingen peers har taget imod det endnu. Det prøves igen ved næste synkronisering.",
+	"Could not save your reply:": "Kunne ikke gemme dit svar:"
 }

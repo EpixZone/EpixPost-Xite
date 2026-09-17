@@ -176,5 +176,10 @@
 	"Verified": "Overené",
 	"Leave hub": "Opustiť hub",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Opustiť tento hub? Vaše príspevky zostanú na hube a budú tam, ak sa znova pripojíte.",
-	"Show only posts from this hub": "Zobraziť iba príspevky z tohto hubu"
+	"Show only posts from this hub": "Zobraziť iba príspevky z tohto hubu",
+	"Sending...": "Odosiela sa...",
+	"Publishing...": "Publikuje sa...",
+	"Published": "Publikované",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Uložené na tomto uzle, ale zatiaľ to neprijal žiadny peer. Skúsi sa to znova pri ďalšej synchronizácii.",
+	"Could not save your reply:": "Odpoveď sa nepodarilo uložiť:"
 }
