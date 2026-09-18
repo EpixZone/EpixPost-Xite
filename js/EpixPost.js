@@ -536,10 +536,12 @@
           this.resolveXidProfiles([this.site_info.auth_address], () => {
             this.user.xid_profile = this.xid_profiles[this.site_info.auth_address];
             this.user.updateInfo(cb);
-            // Additive, idempotent migration of any legacy data.json posts into
-            // posts.json. Background; per-post guarded so it converges as data
-            // syncs and never strips the legacy array.
+            // Additive, idempotent migration of any legacy data.json posts and
+            // comments into their signed merge files. Background; per-item
+            // guarded so it converges as data syncs and never strips the
+            // legacy arrays.
             this.user.migratePosts();
+            this.user.migrateComments();
           });
         } else {
           this.user = new AnonUser();

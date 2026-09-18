@@ -354,38 +354,18 @@
       return out;
     }
 
+    // An edit is a new signed version of the same comment (the merge picks the
+    // causally-latest); it can never touch any other comment.
     handleCommentSave(comment_id, body, cb) {
-      return Page.user.getData(this.row.site, (data) => {
-        var comment, comment_index, i, j, len, ref;
-        ref = data.comment;
-        for (i = j = 0, len = ref.length; j < len; i = ++j) {
-          comment = ref[i];
-          if (comment.comment_id === comment_id) {
-            comment_index = i;
-          }
-        }
-        data.comment[comment_index].body = body;
-        return Page.user.save(data, this.row.site, (res) => {
-          return cb(res);
-        });
-      });
+      return Page.user.editComment(comment_id, { body: body }, cb);
     }
 
+    // A delete is a signed tombstone, NOT a splice: absence is not deletion on
+    // the network, so only a signed tombstone hides the comment.
     handleCommentDelete(comment_id, cb) {
-      return Page.user.getData(this.row.site, (data) => {
-        var comment, comment_index, i, j, len, ref;
-        ref = data.comment;
-        for (i = j = 0, len = ref.length; j < len; i = ++j) {
-          comment = ref[i];
-          if (comment.comment_id === comment_id) {
-            comment_index = i;
-          }
-        }
-        data.comment.splice(comment_index, 1);
-        return Page.user.save(data, this.row.site, (res) => {
-          cb(res);
-          return this.unfollow();
-        });
+      return Page.user.editComment(comment_id, { deleted: true }, (res) => {
+        cb(res);
+        return this.unfollow();
       });
     }
 
