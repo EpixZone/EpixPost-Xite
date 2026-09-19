@@ -504,6 +504,20 @@
           directory: "data/users/" + user_dir
         }
       ], (res) => {
+        // A dbQuery ERROR is not the same answer as "no rows". While the
+        // database is unavailable (a rebuild in progress, a dbschema change
+        // awaiting a signature) every query fails, and treating that as "this
+        // user has no profile" sends the boot straight into
+        // autoCreateXidProfile, which seeds a BLANK data.json over the real
+        // one and publishes it. Bail instead and let a later boot retry.
+        if (res != null && res.error != null) {
+          this.log("User lookup failed, not deciding anything about the profile:", res.error);
+          this.user = new AnonUser();
+          this.user.updateInfo();
+          if (typeof cb === "function") cb(false);
+          Page.projector.scheduleRender();
+          return;
+        }
         if ((res != null ? res.length : void 0) > 0) {
           this.user_hubs = {};
           var user_row;
@@ -598,12 +612,34 @@
           hub: default_hub,
           auth_address: this.site_info.auth_address
         });
-        var data = user.getDefaultData();
-        data.hub = default_hub;
-        this.log("Creating hub data for xID user");
-        user.save(data, default_hub, () => {
-          this.log("Hub data created, re-checking user...");
-          this.checkUser(cb);
+        // NEVER seed over a profile that already exists. The blank default
+        // below is written AND published, so it replaces the live data.json
+        // (comments, likes, follows) for every peer - and because a plain
+        // declared file is last-writer-wins, the network keeps the blank.
+        // Only a genuinely absent file is a new profile; anything else means
+        // the caller reached here for some other reason (a database that was
+        // not ready, a lookup that raced the merger rebuild) and seeding would
+        // destroy data. Checked against the file, never against the database,
+        // because the database is exactly what is unreliable here.
+        Page.cmd("fileGet", {
+          "inner_path": user.getPath(default_hub) + "/data.json",
+          "required": false
+        }, (existing) => {
+          if (existing) {
+            // No checkUser retry from here: the lookup that sent us here would
+            // fail again and loop. Boot finishes unauthenticated and the next
+            // one picks the profile up once the database is back.
+            this.log("Profile data already exists, refusing to seed over it");
+            if (typeof cb === "function") cb(false);
+            return;
+          }
+          var data = user.getDefaultData();
+          data.hub = default_hub;
+          this.log("Creating hub data for xID user");
+          user.save(data, default_hub, () => {
+            this.log("Hub data created, re-checking user...");
+            this.checkUser(cb);
+          });
         });
       };
       ensureHub();
