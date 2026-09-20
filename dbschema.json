@@ -17,6 +17,11 @@
 			"file_name": "data.json",
 			"fold_crdt": "post"
 		},
+		".+/data/users/.+/comment_likes.json": {
+			"to_table": [ {"node": "post", "table": "comment_like"} ],
+			"file_name": "data.json",
+			"fold_crdt": "post"
+		},
 		".+/data/users/.+/data.json": {
 			"to_table": [
 				"follow",
@@ -74,6 +79,15 @@
 			],
 			"indexes": ["CREATE UNIQUE INDEX comment_key ON comment(json_id, comment_id)", "CREATE INDEX comment_post_uri ON comment(post_uri)", "CREATE INDEX comment_date_added ON comment(date_added)", "CREATE INDEX comment_reply_to ON comment (reply_to)"],
 			"schema_changed": 4
+		},
+		"comment_like": {
+			"cols": [
+				["comment_uri", "TEXT"],
+				["date_added", "INTEGER"],
+				["json_id", "INTEGER REFERENCES json (json_id)"]
+			],
+			"indexes": ["CREATE UNIQUE INDEX comment_like_key ON comment_like(json_id, comment_uri)", "CREATE INDEX comment_like_uri ON comment_like(comment_uri)"],
+			"schema_changed": 1
 		},
 		"follow": {
 			"cols": [

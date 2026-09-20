@@ -35,6 +35,22 @@
       Page.cmd("dbQuery", [query, { post_uri: post_uris }], cb);
     }
 
+    // Like counts for a set of comments, keyed by comment_uri
+    // (<user directory>_<comment_id>), the same uri reply_to and permalinks
+    // use. Tombstoned (unliked) records never reach the table, so a plain
+    // COUNT is the live total.
+    queryCommentLikes(comment_uris, cb) {
+      if (!comment_uris.length) {
+        return cb([]);
+      }
+      var query = "SELECT comment_uri, COUNT(*) AS likes FROM comment_like WHERE ? GROUP BY comment_uri";
+      Page.cmd("dbQuery", [query, { comment_uri: comment_uris }], (res) => {
+        // An older node without the comment_like table answers with an error;
+        // treat that as "no likes yet" instead of breaking the whole feed.
+        cb(res && !res.error ? res : []);
+      });
+    }
+
     queryLikes(post_uris, cb) {
       var query = "SELECT post_uri, COUNT(*) AS likes FROM post_like WHERE ? GROUP BY post_uri";
       Page.cmd("dbQuery", [query, { post_uri: post_uris }], cb);
@@ -51,6 +67,7 @@
         for (var j = 0; j < comments.length; j++) {
           comments_size += comments[j].body != null ? comments[j].body.length : 0;
           comments_size += comments[j].reply_to != null ? 1 : 0;
+          comments_size += (comments[j].likes || 0) * 7919;
         }
         parts.push([
           row.key, row.date_added, comments.length, comments_size,
@@ -115,6 +132,7 @@
         var p_likes = new Deferred();
         this.queryComments(post_uris, (comment_rows) => {
           var comment_db = {};
+          var comment_uris = [];
           for (var k = 0; k < comment_rows.length; k++) {
             var comment_row = comment_rows[k];
             var ckey = comment_row.site + "/" + comment_row.post_uri;
@@ -122,16 +140,30 @@
             comment_db[ckey].push(comment_row);
             var c_addr = comment_row.directory != null ? comment_row.directory.replace("data/users/", "") : void 0;
             if (c_addr) all_addresses.push(c_addr);
+            if (c_addr) comment_uris.push(c_addr + "_" + comment_row.comment_id);
           }
-          for (var l = 0; l < rows.length; l++) {
-            var row = rows[l];
-            row["comments"] = comment_db[row.site + "/" + row.post_uri];
-            var ref1;
-            if (((ref1 = this.filter_post_ids) != null ? ref1.length : void 0) === 1 && row.post_id === parseInt(this.filter_post_ids[0])) {
-              row.selected = true;
+          // Counts come in one query for every comment on the page, not one
+          // per comment, so a busy thread is still a single round trip.
+          this.queryCommentLikes(comment_uris, (like_rows) => {
+            var clike_db = {};
+            for (var m = 0; m < like_rows.length; m++) {
+              clike_db[like_rows[m]["comment_uri"]] = like_rows[m]["likes"];
             }
-          }
-          p_comments.resolve();
+            for (var n = 0; n < comment_rows.length; n++) {
+              var cr = comment_rows[n];
+              var cdir = cr.directory != null ? cr.directory.replace("data/users/", "") : "";
+              cr["likes"] = clike_db[cdir + "_" + cr.comment_id] || 0;
+            }
+            for (var l = 0; l < rows.length; l++) {
+              var row = rows[l];
+              row["comments"] = comment_db[row.site + "/" + row.post_uri];
+              var ref1;
+              if (((ref1 = this.filter_post_ids) != null ? ref1.length : void 0) === 1 && row.post_id === parseInt(this.filter_post_ids[0])) {
+                row.selected = true;
+              }
+            }
+            p_comments.resolve();
+          });
         });
         this.queryLikes(post_uris, (like_rows) => {
           var like_db = {};

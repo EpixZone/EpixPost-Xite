@@ -24,6 +24,8 @@
         this.setRow(row);
       }
       this.likes = {};
+      // comment_uri -> true for comments THIS user has liked
+      this.comment_likes = {};
       this.followed_users = {};
       this.submitting_follow = false;
     }
@@ -146,12 +148,13 @@
     }
 
     updateInfo(cb) {
-      var p_followed_users, p_likes, user_dir;
+      var p_comment_likes, p_followed_users, p_likes, user_dir;
       if (cb == null) {
         cb = null;
       }
       this.logStart("Info loaded");
       p_likes = new Deferred();
+      p_comment_likes = new Deferred();
       p_followed_users = new Deferred();
       Page.cmd("dbQuery", ["SELECT * FROM follow WHERE json_id = " + this.row.json_id], (res) => {
         var j, len, row;
@@ -172,7 +175,18 @@
         }
         return p_likes.resolve();
       });
-      return Deferred.join(p_followed_users, p_likes).then((res1, res2) => {
+      Page.cmd("dbQuery", ["SELECT comment_like.* FROM json LEFT JOIN comment_like USING (json_id) WHERE directory = 'data/users/" + user_dir + "' AND comment_uri IS NOT NULL"], (res) => {
+        var j, len, row;
+        this.comment_likes = {};
+        if (res && !res.error) {
+          for (j = 0, len = res.length; j < len; j++) {
+            row = res[j];
+            this.comment_likes[row.comment_uri] = true;
+          }
+        }
+        return p_comment_likes.resolve();
+      });
+      return Deferred.join(p_followed_users, p_likes, p_comment_likes).then(() => {
         this.logEnd("Info loaded");
         return typeof cb === "function" ? cb(true) : void 0;
       });
@@ -535,6 +549,71 @@
           }
           return this.saveComment(signed, this.hub, (res) => {
             if (cb) cb(res === "ok");
+          });
+        });
+      });
+    }
+
+    // Read this user's comment_likes.json (all signed record versions).
+    getCommentLikes(site, cb) {
+      return Page.cmd("fileGet", [this.getPath(site) + "/comment_likes.json", false], (data) => {
+        var container;
+        container = data ? JSON.parse(data) : null;
+        if (!container || !container.post) {
+          container = { "record_format": "epix-orset-1", "post": [] };
+        }
+        return cb(container);
+      });
+    }
+
+    // Like or unlike a comment. A like is a KEYED signed record: the node
+    // derives a stable per-(author, comment_uri) CRDT key, so liking again
+    // supersedes rather than piling up, and an unlike is a signed tombstone
+    // for that same key. One like per user per comment falls out of the key,
+    // not out of any check the client has to make. cb(true/false).
+    toggleCommentLike(comment_uri, liked, cb) {
+      if (cb == null) cb = null;
+      if (liked) {
+        this.comment_likes[comment_uri] = true;
+      } else {
+        delete this.comment_likes[comment_uri];
+      }
+      return this.getCommentLikes(this.hub, (container) => {
+        var maxClock = 0, orig = null;
+        container.post.forEach((r) => {
+          if (r.key === comment_uri) {
+            if (r.clock > maxClock) {
+              maxClock = r.clock;
+            }
+            if (!orig || (r.clock || 0) >= (orig.clock || 0)) {
+              orig = r;
+            }
+          }
+        });
+        var record = {
+          "key": comment_uri,
+          "nonce": orig && orig.nonce ? orig.nonce : this.randNonce(),
+          "clock": Math.max(maxClock + 1, Date.now()),
+          "supersedes": maxClock,
+          "deleted": !liked,
+          "comment_uri": comment_uri,
+          // Names the reaction for the hub's EDX reaction feed, which counts
+          // per target and kind.
+          "reaction": "like",
+          "date_added": Time.timestamp()
+        };
+        return Page.cmd("recordSign", [record], (signed) => {
+          if (!signed || signed.error) {
+            if (cb) cb(false);
+            return;
+          }
+          var container_out = { "record_format": "epix-orset-1", "post": [signed] };
+          return Page.cmd("fileWrite", [this.getPath(this.hub) + "/comment_likes.json", Text.fileEncode(container_out)], (res_write) => {
+            Page.content.update();
+            return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, (res_pub) => {
+              this.log("toggleCommentLike", comment_uri, liked, res_write, res_pub);
+              if (cb) cb(res_write === "ok");
+            });
           });
         });
       });
