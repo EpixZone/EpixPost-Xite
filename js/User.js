@@ -413,8 +413,49 @@
       });
     }
 
-    // cb(res, row) gets the comment row as written (its comment_id is how
-    // the page recognizes the db row later); cb_published as in save().
+    // Read this user's comments.json (all signed record versions).
+    getComments(site, cb) {
+      return Page.cmd("fileGet", [this.getPath(site) + "/comments.json", false], (data) => {
+        var container;
+        container = data ? JSON.parse(data) : null;
+        if (!container || !container.post) {
+          container = { "record_format": "epix-orset-1", "post": [] };
+        }
+        return cb(container);
+      });
+    }
+
+    // Write ONE signed comment record to comments.json and publish. The node
+    // union-merges the record into the on-disk set (so this never overwrites
+    // another comment) and validates a merge file by each record's OWN
+    // signature rather than by a whole-file digest in content.json - which is
+    // why the comment reaches the database on the write itself, instead of
+    // waiting for the sign + publish round-trip the way a plain file must.
+    // cb(res, record) fires on the write, cb_published once publishing is over.
+    saveComment(record, site, cb, cb_published) {
+      if (site == null) site = this.hub;
+      if (cb == null) cb = null;
+      var container = { "record_format": "epix-orset-1", "post": [record] };
+      return Page.cmd("fileWrite", [this.getPath(site) + "/comments.json", Text.fileEncode(container)], (res_write) => {
+        Page.content.update();
+        if (typeof cb === "function") {
+          cb(res_write, record);
+        }
+        return Page.cmd("sitePublish", { "inner_path": this.getPath(site) + "/content.json" }, (res_pub) => {
+          this.log("saveComment", res_write, res_pub);
+          if (typeof cb_published === "function") {
+            cb_published(res_pub);
+          }
+        });
+      });
+    }
+
+    // A new comment is a fresh signed record. The node fills in `author` and
+    // the derived immutable CRDT key, then signs it. `comment_id` stays the
+    // app-level identity that the comment URI and every reply_to are built
+    // from, minted from the millisecond clock the way Epix Talk mints its own,
+    // so permalinks and reply targets survive the move off data.json.
+    // cb(res, record); cb_published as in saveComment.
     comment(site, post_uri, body, cb, reply_to, cb_published) {
       if (cb == null) {
         cb = null;
@@ -422,23 +463,132 @@
       if (reply_to == null) {
         reply_to = null;
       }
-      return this.getData(site, (data) => {
-        var row = {
-          "comment_id": data.next_comment_id,
-          "body": body,
-          "post_uri": post_uri,
-          "date_added": Time.timestamp()
-        };
-        if (reply_to) {
-          row["reply_to"] = reply_to;
-        }
-        data.comment.push(row);
-        data.next_comment_id += 1;
-        return this.save(data, site, (res) => {
+      var record = {
+        "nonce": this.randNonce(),
+        "clock": Date.now(),
+        "supersedes": 0,
+        "deleted": false,
+        "comment_id": Date.now(),
+        "post_uri": post_uri,
+        "body": body,
+        "date_added": Time.timestamp()
+      };
+      if (reply_to) {
+        record["reply_to"] = reply_to;
+      }
+      return Page.cmd("recordSign", [record], (signed) => {
+        if (!signed || signed.error) {
           if (cb) {
-            return cb(res, row);
+            cb(signed || false, record);
           }
-        }, cb_published);
+          return;
+        }
+        return this.saveComment(signed, site, cb, cb_published);
+      });
+    }
+
+    // Build + sign a NEW version of an existing comment (an edit or a
+    // tombstone) and save it. The immutable origin (post_id/nonce/date_added)
+    // and the comment's place in the thread (post_uri/reply_to) carry over;
+    // clock and supersedes come from what is on disk, so the merge orders this
+    // version after every one this device has seen. A delete is a signed
+    // tombstone, NOT a splice: absence is not deletion on the network.
+    // cb(true/false); false when this device holds no such comment.
+    editComment(comment_id, changes, cb) {
+      if (cb == null) cb = null;
+      return this.getComments(this.hub, (container) => {
+        var maxClock = 0, orig = null;
+        container.post.forEach((r) => {
+          if (r.comment_id === comment_id) {
+            if (r.clock > maxClock) {
+              maxClock = r.clock;
+            }
+            if (!orig || (r.clock || 0) >= (orig.clock || 0)) {
+              orig = r;
+            }
+          }
+        });
+        if (!orig) {
+          if (cb) cb(false);
+          return;
+        }
+        var record = {
+          "nonce": orig.nonce ? orig.nonce : this.randNonce(),
+          "clock": Math.max(maxClock + 1, Date.now()),
+          "supersedes": maxClock,
+          "deleted": changes.deleted === true,
+          "comment_id": comment_id,
+          "post_uri": orig.post_uri,
+          "body": changes.deleted ? "" : (changes.body != null ? changes.body : orig.body),
+          "date_added": orig.date_added
+        };
+        if (orig.post_id != null) {
+          record["post_id"] = orig.post_id;
+        }
+        if (orig.reply_to) {
+          record["reply_to"] = orig.reply_to;
+        }
+        return Page.cmd("recordSign", [record], (signed) => {
+          if (!signed || signed.error) {
+            if (cb) cb(false);
+            return;
+          }
+          return this.saveComment(signed, this.hub, (res) => {
+            if (cb) cb(res === "ok");
+          });
+        });
+      });
+    }
+
+    // One-time-ish migration of legacy data.json `comment[]` into comments.json.
+    // ADDITIVE and per-comment idempotent: signs only legacy comments not
+    // already in comments.json (keeping their legacy comment_id, so existing
+    // permalinks and every reply_to pointing at them keep resolving), and NEVER
+    // strips data.json.comment[] - that last-writer-wins write could clobber
+    // comments from a device whose data has not synced here yet. Runs in the
+    // background on load; converges as data syncs.
+    migrateComments(cb) {
+      if (cb == null) cb = null;
+      var done = () => { if (cb) cb(); };
+      return this.getData(this.hub, (data) => {
+        var legacy = (data && data.comment) || [];
+        if (!legacy.length) return done();
+        return this.getComments(this.hub, (container) => {
+          var have = {};
+          container.post.forEach((r) => { have[r.comment_id] = true; });
+          var todo = legacy.filter((c) => !have[c.comment_id]);
+          if (!todo.length) return done();
+          var signed = [];
+          var i = 0;
+          var signNext = () => {
+            if (i >= todo.length) {
+              if (!signed.length) return done();
+              // One union-write + one publish for the whole batch.
+              var merged = { "record_format": "epix-orset-1", "post": signed };
+              return Page.cmd("fileWrite", [this.getPath(this.hub) + "/comments.json", Text.fileEncode(merged)], () => {
+                Page.content.update();
+                return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, () => done());
+              });
+            }
+            var c = todo[i++];
+            var record = {
+              "nonce": this.randNonce(),
+              "clock": 1,
+              "supersedes": 0,
+              "deleted": false,
+              "comment_id": c.comment_id,
+              "post_uri": c.post_uri,
+              "body": c.body,
+              "date_added": c.date_added
+            };
+            if (c.reply_to != null) record["reply_to"] = c.reply_to;
+            return Page.cmd("recordSign", [record], (s) => {
+              if (s && !s.error) signed.push(s);
+              return signNext();
+            });
+          };
+          return signNext();
+        });
       });
     }
 
