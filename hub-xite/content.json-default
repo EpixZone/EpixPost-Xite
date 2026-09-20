@@ -5,6 +5,22 @@
  "description": "",
  "epixnet_version": "0.0.3",
  "feeds": {
+  "comment_likes": {
+   "clock_unit": "s",
+   "files": "data/users/*/comment_likes.json",
+   "kind": {
+    "default": "reaction",
+    "reaction_kind_field": "reaction"
+   },
+   "map": {
+    "author": "author",
+    "clock": "date_added",
+    "id": "key",
+    "target": "comment_uri"
+   },
+   "record_format": "epix-orset-1",
+   "record_key": "post"
+  },
   "comments": {
    "clock_unit": "s",
    "files": "data/users/*/comments.json",

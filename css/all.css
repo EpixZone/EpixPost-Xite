@@ -938,11 +938,26 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 .comment .body p { margin: 0.25em 0 }
 .comment .body.maxheight::before { background-color: var(--epix-surface-2) }
 .comment h1, .comment h2, .comment h3, .comment h4, .comment h5, .comment h6 { font-size: inherit; font-weight: 600 }
+.comment-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 2px }
 .comment .icon-reply {
-	margin-left: auto; opacity: 0; transition: opacity 0.2s; font-size: 12px; font-weight: 600;
+	opacity: 0; transition: opacity 0.2s; font-size: 12px; font-weight: 600;
 	color: var(--epix-text-mid); display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px;
 	border-radius: var(--epix-radius-sm)
 }
+/* The like stays visible always: unlike Reply it also REPORTS something (the
+   count), so hiding it until hover would hide data, not just an affordance. */
+.comment .comment-actions .like {
+	font-size: 12px; font-weight: 600; color: var(--epix-text-mid);
+	display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px;
+	border-radius: var(--epix-radius-sm)
+}
+.comment .comment-actions .like:hover {
+	color: var(--epix-accent-text); text-decoration: none; background-color: var(--epix-surface)
+}
+.comment .comment-actions .like .icon-heart::before { width: 13px; height: 13px; margin-right: 0 }
+.comment .comment-actions .like.active { color: var(--epix-danger) }
+.comment .comment-actions .like.active:hover { color: var(--epix-danger) }
+.comment .comment-actions .like.loading { opacity: 0.5; pointer-events: none }
 .comment .icon-reply::before { width: 13px; height: 13px; margin-right: 4px }
 .comment:hover .icon-reply, .comment .icon-reply:focus-visible { opacity: 1 }
 .comment .icon-reply:hover { color: var(--epix-accent-text); text-decoration: none; background-color: var(--epix-surface) }
@@ -1398,6 +1413,7 @@ a.settings-row.settings-nav:hover .settings-row-chevron { color: var(--epix-acce
 	.post .user .settings { min-height: 44px }
 	.replies-chip { min-height: 44px }
 	.comment .icon-reply { padding: 10px 8px }
+	.comment .comment-actions .like { padding: 10px 8px }
 }
 
 @media (prefers-reduced-motion: reduce) {

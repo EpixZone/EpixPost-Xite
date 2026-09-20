@@ -518,6 +518,20 @@
         state.handleBodyClick = (e) => {
           return this.handleCommentBodyClick(e, uri);
         };
+        state.submitting_like = false;
+        state.handleLikeClick = () => {
+          if (state.submitting_like) {
+            return false;
+          }
+          var liked = !(Page.user && Page.user.comment_likes[uri]);
+          state.submitting_like = true;
+          Page.projector.scheduleRender();
+          Page.user.toggleCommentLike(uri, liked, () => {
+            state.submitting_like = false;
+            Page.projector.scheduleRender();
+          });
+          return false;
+        };
         this.comment_states[uri] = state;
       }
       return this.comment_states[uri];
@@ -626,7 +640,7 @@
       if (opts == null) {
         opts = {};
       }
-      var ref, ref1;
+      var ref, ref1, ref2, ref3;
       var uri = this.getCommentUri(comment);
       var state = this.getCommentState(uri);
       // May be created before the language file loads: re-resolve on render
@@ -676,10 +690,28 @@
             href: focus_href,
             title: Time.date(comment.date_added, "long"),
             onclick: Page.handleLinkClick
-          }, Time.since(comment.date_added)), h("a.icon.icon-reply", {
-            href: "#Reply",
-            onclick: state.handleReplyClick
-          }, _("Reply"))
+          }, Time.since(comment.date_added)), h("div.comment-actions", [
+            h("a.like.link", {
+              classes: {
+                active: !!((ref2 = Page.user) != null ? ref2.comment_likes[uri] : void 0),
+                loading: state.submitting_like
+              },
+              href: "#Like",
+              title: _("Like"),
+              onclick: state.handleLikeClick
+            }, [
+              h("span.icon.icon-heart", {
+                classes: {
+                  active: !!((ref3 = Page.user) != null ? ref3.comment_likes[uri] : void 0)
+                }
+              }),
+              comment.likes ? "" + comment.likes : void 0
+            ]),
+            h("a.icon.icon-reply", {
+              href: "#Reply",
+              onclick: state.handleReplyClick
+            }, _("Reply"))
+          ])
         ]),
         h("div.comment-body-wrap", {
           onclick: state.handleBodyClick,

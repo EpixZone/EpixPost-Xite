@@ -8,6 +8,7 @@
       this.hub = null;
       this.followed_users = {};
       this.likes = {};
+      this.comment_likes = {};
     }
 
     updateInfo(cb) {
@@ -43,6 +44,12 @@
       delete this.followed_users[hub + "/" + auth_address];
       this.save(cb);
       Page.content.update();
+    }
+
+    toggleCommentLike(comment_uri, liked, cb) {
+      if (cb == null) cb = null;
+      Page.cmd("wrapperNotification", ["info", _("You need a profile for this feature")]);
+      if (cb) cb(false);
     }
 
     comment(site, post_uri, body, cb) {

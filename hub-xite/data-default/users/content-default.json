@@ -12,6 +12,10 @@
     "max_size": 300000,
     "max_size_optional": 500000000,
     "merge_files": {
+     "comment_likes.json": {
+      "class": "epix-orset-1",
+      "max_size": 3000000
+     },
      "comments.json": {
       "class": "epix-orset-1",
       "max_size": 3000000
@@ -29,6 +33,10 @@
     "max_size": 300000,
     "max_size_optional": 500000000,
     "merge_files": {
+     "comment_likes.json": {
+      "class": "epix-orset-1",
+      "max_size": 3000000
+     },
      "comments.json": {
       "class": "epix-orset-1",
       "max_size": 3000000
