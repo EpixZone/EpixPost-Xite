@@ -22,6 +22,7 @@
       this.updateSiteInfo = this.updateSiteInfo.bind(this);
       this.updateContentNoanim = this.updateContentNoanim.bind(this);
       this.onOpenWebsocket = this.onOpenWebsocket.bind(this);
+      this.startContent = this.startContent.bind(this);
       this.handleLinkClick = this.handleLinkClick.bind(this);
       this.navigate = this.navigate.bind(this);
       this.renderContent = this.renderContent.bind(this);
@@ -29,6 +30,9 @@
 
     init() {
       this.params = {};
+      // Guards startContent: the language load and the safety timer race to
+      // begin the content path, and only the first may win.
+      this.content_started = false;
       this.merged_sites = {};
       // Live download of a hub we merged: see noteHubProgress. Cleared by
       // going quiet, so this is how long without an event counts as finished.
@@ -295,14 +299,37 @@
     onOpenWebsocket(e) {
       this.cmd("wrapperSetViewport", "width=device-width, initial-scale=1");
       this.setLoadingProgress(15, _("Loading site info..."));
-      this.updateSiteInfo();
+      // The language file must land BEFORE the content path starts. Nearly
+      // every component resolves its labels through _() once, when it is
+      // constructed, so anything built before the translations arrive keeps
+      // English for the life of the page. That reads exactly like "the
+      // language file was ignored" - and it is why ADDING one looked like it
+      // did nothing, while an already-loaded language seemed fine: what
+      // differed was how much had been constructed by the time the file
+      // landed. Epix Talk gates its whole boot on the same call for the same
+      // reason. Three places here used to paper over it by re-resolving on
+      // render; gating means no new component has to remember that.
       this.cmd("serverInfo", {}, (server_info) => {
         this.setServerInfo(server_info);
         var lang = server_info != null ? (server_info.user_settings != null ? server_info.user_settings.language : void 0) : void 0;
-        loadLanguage(lang, () => {
-          this.projector.scheduleRender();
-        });
+        loadLanguage(lang, this.startContent);
       });
+      // serverInfo is the node answering about itself, so it effectively
+      // always returns - but a boot wedged on it would leave a blank page
+      // forever, which is worse than an untranslated one. Start regardless if
+      // it has not answered by then.
+      setTimeout(this.startContent, 5000);
+    }
+
+    // Begin the content path. Runs ONCE, whichever of the language load or
+    // the safety timer reaches it first.
+    startContent() {
+      if (this.content_started) {
+        return;
+      }
+      this.content_started = true;
+      this.updateSiteInfo();
+      this.projector.scheduleRender();
     }
 
     // The granted permission list, [] until a full siteInfo has landed. The
