@@ -355,7 +355,10 @@
       return h("a.avatar", attrs);
     }
 
-    save(data, site, cb) {
+    // cb fires once the file is written (the node has it, still unsigned);
+    // cb_published once the sign + publish round-trip is over, with the
+    // sitePublish result ("ok", or {error}).
+    save(data, site, cb, cb_published) {
       if (site == null) {
         site = this.hub;
       }
@@ -370,7 +373,10 @@
         return Page.cmd("sitePublish", {
           "inner_path": this.getPath(site) + "/data.json"
         }, (res_sign) => {
-          return this.log("Save result", res_write, res_sign);
+          this.log("Save result", res_write, res_sign);
+          if (typeof cb_published === "function") {
+            cb_published(res_sign);
+          }
         });
       });
     }
@@ -407,7 +413,9 @@
       });
     }
 
-    comment(site, post_uri, body, cb, reply_to) {
+    // cb(res, row) gets the comment row as written (its comment_id is how
+    // the page recognizes the db row later); cb_published as in save().
+    comment(site, post_uri, body, cb, reply_to, cb_published) {
       if (cb == null) {
         cb = null;
       }
@@ -428,9 +436,9 @@
         data.next_comment_id += 1;
         return this.save(data, site, (res) => {
           if (cb) {
-            return cb(res);
+            return cb(res, row);
           }
-        });
+        }, cb_published);
       });
     }
 

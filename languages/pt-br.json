@@ -176,5 +176,10 @@
 	"Verified": "Verificado",
 	"Leave hub": "Sair do hub",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Sair deste hub? Suas publicações ficam no hub e ainda estarão lá se você voltar.",
-	"Show only posts from this hub": "Mostrar apenas publicações deste hub"
+	"Show only posts from this hub": "Mostrar apenas publicações deste hub",
+	"Sending...": "Enviando...",
+	"Publishing...": "Publicando...",
+	"Published": "Publicado",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Salvo neste nó, mas nenhum peer o aceitou ainda. Será tentado novamente na próxima sincronização.",
+	"Could not save your reply:": "Não foi possível salvar sua resposta:"
 }

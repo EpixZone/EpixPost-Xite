@@ -19,6 +19,9 @@
       this.handleCommentDelete = this.handleCommentDelete.bind(this);
       this.handleCommentSave = this.handleCommentSave.bind(this);
       this.handleCommentSubmit = this.handleCommentSubmit.bind(this);
+      this.submitComment = this.submitComment.bind(this);
+      this.pollPendingComments = this.pollPendingComments.bind(this);
+      this.renderPendingComment = this.renderPendingComment.bind(this);
       this.handleCommentClick = this.handleCommentClick.bind(this);
       this.handleLikeClick = this.handleLikeClick.bind(this);
       this.handleShareClick = this.handleShareClick.bind(this);
@@ -30,6 +33,12 @@
       this.owned = false;
       this.editable_comments = {};
       this.comment_states = {};
+      // Comments of ours the node has not indexed yet (uri -> row); they
+      // render in place until the db row shows up. See submitComment.
+      this.pending_comments = {};
+      // Publish outcome per comment uri: "publishing" | "published" | "failed"
+      this.publish_states = {};
+      this.pending_poll = null;
       this.field_comment = new Autosize({
         placeholder: _("Post your reply"),
         onsubmit: this.handleCommentSubmit,
@@ -178,22 +187,171 @@
     }
 
     handleCommentSubmit() {
-      var post_uri, ref, site, timer_loading;
-      if (!this.field_comment.attrs.value) {
+      this.submitComment(this.field_comment, null);
+    }
+
+    // Write a comment and keep it on screen the whole way. The fileWrite
+    // itself returns fast, but the node only indexes a user file once it is
+    // signed (inside sitePublish) and the merger db is rebuilt - 5-20s on a
+    // busy node - and it does not tell the writing page when that happens.
+    // Before this the text vanished from the composer and reappeared much
+    // later, with nothing on screen in between. Now the comment shows as a
+    // pending row (renderPendingComment) until its db row arrives, and the
+    // publish outcome lands on the row instead of only as a late toast.
+    submitComment(field, reply_to, cb) {
+      var body = field.attrs.value;
+      if (!body || !body.trim()) {
         return;
       }
-      timer_loading = setTimeout((() => {
-        return this.field_comment.loading = true;
-      }), 100);
-      ref = this.row.key.split("-"), site = ref[0], post_uri = ref[1];
-      return Page.user.comment(site, post_uri, this.field_comment.attrs.value, (res) => {
+      var timer_loading = setTimeout(() => {
+        field.loading = true;
+      }, 100);
+      var ref = this.row.key.split("-"), site = ref[0], post_uri = ref[1];
+      var pending = null;
+      Page.user.comment(site, post_uri, body, (res, row) => {
         clearTimeout(timer_loading);
-        this.field_comment.loading = false;
-        if (res) {
-          this.field_comment.setValue("");
+        field.loading = false;
+        // A failed write comes back as {error}; only "ok" is a success.
+        // (AnonUser answers false after its own "you need a profile" note.)
+        var ok = res === "ok";
+        if (ok) {
+          field.setValue("");
+          pending = this.addPendingComment(row, reply_to);
+        } else if (res && res.error) {
+          Page.cmd("wrapperNotification", ["error", _("Could not save your reply:") + " " + res.error]);
         }
-        return this.follow();
+        if (typeof cb === "function") {
+          cb(ok);
+        }
+        Page.projector.scheduleRender();
+        this.follow();
+      }, reply_to, (res_publish) => {
+        if (pending) {
+          this.setPublishState(pending.uri, res_publish === "ok" ? "published" : "failed");
+        }
       });
+    }
+
+    addPendingComment(row, reply_to) {
+      var uri = Page.user.getDirectory() + "_" + row.comment_id;
+      var pending = {
+        uri: uri,
+        body: row.body,
+        reply_to: reply_to || null,
+        date_added: row.date_added,
+        added_at: Time.timestamp(),
+        // Set once the db row exists but is not rendered by the current
+        // view (a reply on a feed card): the row stays to show the outcome.
+        indexed: false
+      };
+      this.pending_comments[uri] = pending;
+      this.publish_states[uri] = "publishing";
+      this.schedulePendingPoll(1500);
+      return pending;
+    }
+
+    setPublishState(uri, state) {
+      this.publish_states[uri] = state;
+      if (state === "published") {
+        // Leave the check mark up briefly; after that it is just a comment.
+        setTimeout(() => {
+          if (this.publish_states[uri] === "published") {
+            delete this.publish_states[uri];
+            Page.projector.scheduleRender();
+          }
+        }, 5000);
+      }
+      Page.projector.scheduleRender();
+    }
+
+    // The node leaves the writing page out of the file_done it sends when
+    // the signed content gets indexed, so nothing pushes the new row here:
+    // re-query while a comment is still pending. Quick at first (it usually
+    // lands within seconds), then slower, and give up after a few minutes
+    // rather than poll a stuck node forever.
+    schedulePendingPoll(delay) {
+      if (this.pending_poll) {
+        clearTimeout(this.pending_poll);
+      }
+      this.pending_poll = setTimeout(this.pollPendingComments, delay);
+    }
+
+    pollPendingComments() {
+      this.pending_poll = null;
+      var now = Time.timestamp();
+      var oldest = now;
+      var waiting = 0;
+      for (var uri in this.pending_comments) {
+        var pending = this.pending_comments[uri];
+        if (pending.indexed) {
+          continue;
+        }
+        waiting += 1;
+        oldest = Math.min(oldest, pending.added_at);
+      }
+      if (!waiting) {
+        return;
+      }
+      var waited = now - oldest;
+      if (waited > 300) {
+        this.log("Pending comments never got indexed, dropping them");
+        for (uri in this.pending_comments) {
+          if (!this.pending_comments[uri].indexed) {
+            delete this.pending_comments[uri];
+          }
+        }
+        Page.projector.scheduleRender();
+        return;
+      }
+      Page.updateContentNoanim();
+      this.schedulePendingPoll(waited < 30 ? 3000 : 10000);
+    }
+
+    // Reconcile the pending rows with the fetched comments. `visible` is the
+    // set of comment uris this render pass shows: a pending row whose db
+    // row is among them goes away (the real row takes over, badge and all);
+    // one whose db row exists but is NOT shown by this view (a reply on a
+    // feed card, which lists top level only) stays until its publish
+    // outcome has been shown, so it does not just blink out of existence.
+    settlePendingComments(tree, visible) {
+      var changed = false;
+      for (var uri in this.pending_comments) {
+        if (!tree.by_uri[uri]) {
+          continue;
+        }
+        if (!visible[uri] && this.publish_states[uri]) {
+          this.pending_comments[uri].indexed = true;
+          continue;
+        }
+        delete this.pending_comments[uri];
+        changed = true;
+      }
+      if (changed && this.pending_poll) {
+        var waiting = false;
+        for (uri in this.pending_comments) {
+          if (!this.pending_comments[uri].indexed) {
+            waiting = true;
+          }
+        }
+        if (!waiting) {
+          clearTimeout(this.pending_poll);
+          this.pending_poll = null;
+        }
+      }
+    }
+
+    getPendingReplies(parent_uri) {
+      var out = [];
+      for (var uri in this.pending_comments) {
+        var pending = this.pending_comments[uri];
+        if ((pending.reply_to || null) === (parent_uri || null)) {
+          out.push(pending);
+        }
+      }
+      out.sort(function(a, b) {
+        return a.date_added - b.date_added;
+      });
+      return out;
     }
 
     handleCommentSave(comment_id, body, cb) {
@@ -387,23 +545,11 @@
 
     handleReplySubmit(uri) {
       var state = this.getCommentState(uri);
-      if (!state.field.attrs.value || !state.field.attrs.value.trim()) {
-        return;
-      }
-      var timer_loading = setTimeout((function() {
-        return state.field.loading = true;
-      }), 100);
-      var ref = this.row.key.split("-"), site = ref[0], post_uri = ref[1];
-      return Page.user.comment(site, post_uri, state.field.attrs.value, (res) => {
-        clearTimeout(timer_loading);
-        state.field.loading = false;
-        if (res) {
-          state.field.setValue("");
+      this.submitComment(state.field, uri, function(ok) {
+        if (ok) {
           state.open = false;
         }
-        Page.projector.scheduleRender();
-        return this.follow();
-      }, uri);
+      });
     }
 
     // Tapping a comment body opens its focus view; links inside the body and
@@ -570,8 +716,81 @@
         }, [
           h("div.replying-to", [_("Replying to"), " ", h("span.reply-name", "@" + display_name)]),
           state.field.render()
-        ]) : void 0
+        ]) : void 0,
+        this.publish_states[uri] ? this.renderCommentStatus(this.publish_states[uri]) : void 0,
+        this.renderPendingReplies(uri)
       ]);
+    }
+
+    // The row of a comment we just wrote, in the spot its db row will take
+    // (top level, or nested under the parent it replies to). Looks like a
+    // comment minus the reply/edit affordances, plus a status line.
+    renderPendingComment(pending, opts) {
+      if (opts == null) {
+        opts = {};
+      }
+      var noanim = this.isNoanim();
+      var display_name = Page.user ? Page.user.getDisplayName() : "";
+      var status;
+      if (pending.indexed) {
+        status = this.publish_states[pending.uri] || "published";
+      } else {
+        status = this.publish_states[pending.uri] === "failed" ? "failed" : "sending";
+      }
+      return h("div.comment.pending", {
+        key: "pending_" + pending.uri,
+        animate_scrollfix: true,
+        enterAnimation: noanim ? void 0 : Animation.slideDown,
+        classes: {
+          nested: !!opts.nested
+        }
+      }, [
+        h("div.user", [
+          h("span.name", display_name),
+          h("span.sep", " \u00b7 "),
+          h("span.added", Time.since(pending.date_added))
+        ]),
+        h("div.comment-body-wrap", [
+          h("div.body", {
+            innerHTML: Text.renderMarked(pending.body)
+          })
+        ]),
+        this.renderCommentStatus(status)
+      ]);
+    }
+
+    // Pending replies to `parent_uri`, nested under it like real replies.
+    renderPendingReplies(parent_uri) {
+      var pending = this.getPendingReplies(parent_uri);
+      if (!pending.length) {
+        return void 0;
+      }
+      return h("div.comment-children.pending-replies", pending.map((row) => {
+        return this.renderPendingComment(row, {nested: true});
+      }));
+    }
+
+    renderCommentStatus(status) {
+      var text = {
+        sending: _("Sending..."),
+        publishing: _("Publishing..."),
+        published: _("Published"),
+        failed: _("Saved on this node, but no peers accepted it yet. It will retry on the next sync.")
+      }[status];
+      var icon;
+      if (status === "published") {
+        icon = h("span.status-icon.ok", "\u2713");
+      } else if (status === "failed") {
+        icon = h("span.status-icon.warn", "!");
+      } else {
+        icon = h("span.spinner");
+      }
+      return h("div.comment-status", {
+        classes: {
+          published: status === "published",
+          failed: status === "failed"
+        }
+      }, [icon, h("span.status-text", text)]);
     }
 
     // Feed card: top level comments only (newest first, capped), each with a
@@ -579,10 +798,17 @@
     renderComments() {
       var noanim = this.isNoanim();
       var tree = this.buildCommentTree();
-      if (!tree.top.length && !this.commenting) {
+      var top_desc = tree.top.slice().reverse();
+      var visible = {};
+      var shown = top_desc.slice(0, this.comment_limit);
+      for (var i = 0; i < shown.length; i++) {
+        visible[this.getCommentUri(shown[i])] = true;
+      }
+      this.settlePendingComments(tree, visible);
+      var pending_top = this.getPendingReplies(null);
+      if (!tree.top.length && !pending_top.length && !this.commenting) {
         return [];
       }
-      var top_desc = tree.top.slice().reverse();
       return h("div.comment-list", {
         enterAnimation: noanim ? void 0 : Animation.slideDown,
         exitAnimation: noanim ? void 0 : Animation.slideUp,
@@ -592,7 +818,11 @@
         this.commenting ? h("div.comment-create", {
           enterAnimation: noanim ? void 0 : Animation.slideDown
         }, this.field_comment.render()) : void 0,
-        top_desc.slice(0, this.comment_limit).map((comment) => {
+        // Newest first here, so ours sits on top while it is pending
+        pending_top.slice().reverse().map((pending) => {
+          return this.renderPendingComment(pending);
+        }),
+        shown.map((comment) => {
           return this.renderComment(comment, tree, {show_chip: true});
         }),
         top_desc.length > this.comment_limit ? h("a.more", {
@@ -612,6 +842,24 @@
       var tree = this.buildCommentTree();
       var focus_uri = this.item_list ? this.item_list.focus_uri : null;
       var parts = [];
+      var visible = {};
+      var i, j, uri;
+      if (focus_uri && tree.by_uri[focus_uri]) {
+        var chain = this.getAncestors(focus_uri, tree).concat([tree.by_uri[focus_uri]], tree.children[focus_uri] || []);
+        for (i = 0; i < chain.length; i++) {
+          visible[this.getCommentUri(chain[i])] = true;
+        }
+      } else {
+        for (i = 0; i < tree.top.length; i++) {
+          uri = this.getCommentUri(tree.top[i]);
+          visible[uri] = true;
+          var kids = tree.children[uri] || [];
+          for (j = 0; j < kids.length; j++) {
+            visible[this.getCommentUri(kids[j])] = true;
+          }
+        }
+      }
+      this.settlePendingComments(tree, visible);
       if (focus_uri && tree.by_uri[focus_uri]) {
         var ancestors = this.getAncestors(focus_uri, tree);
         if (ancestors.length) {
@@ -640,6 +888,11 @@
           ]);
         });
       }
+      // Oldest first here, so a pending top-level comment goes at the end;
+      // pending replies render inside their parent (renderPendingReplies).
+      parts = parts.concat(this.getPendingReplies(null).map((pending) => {
+        return this.renderPendingComment(pending);
+      }));
       return parts;
     }
 

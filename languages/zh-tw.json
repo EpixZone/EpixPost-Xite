@@ -176,5 +176,10 @@
 	"Verified": "已驗證",
 	"Leave hub": "離開 Hub",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "離開這個 Hub 嗎？您的貼文會保留在 Hub 上，重新加入後仍然存在。",
-	"Show only posts from this hub": "只顯示這個 Hub 的貼文"
+	"Show only posts from this hub": "只顯示這個 Hub 的貼文",
+	"Sending...": "傳送中...",
+	"Publishing...": "發布中...",
+	"Published": "已發布",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "已儲存在此節點，但尚未有任何節點接受。將在下次同步時重試。",
+	"Could not save your reply:": "無法儲存您的回覆："
 }

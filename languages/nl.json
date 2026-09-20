@@ -176,5 +176,10 @@
 	"Verified": "Geverifieerd",
 	"Leave hub": "Hub verlaten",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Deze hub verlaten? Je berichten blijven op de hub staan en zijn er nog als je opnieuw lid wordt.",
-	"Show only posts from this hub": "Toon alleen berichten van deze hub"
+	"Show only posts from this hub": "Toon alleen berichten van deze hub",
+	"Sending...": "Verzenden...",
+	"Publishing...": "Publiceren...",
+	"Published": "Gepubliceerd",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Opgeslagen op deze node, maar nog geen enkele peer heeft het geaccepteerd. Bij de volgende synchronisatie wordt het opnieuw geprobeerd.",
+	"Could not save your reply:": "Kon je antwoord niet opslaan:"
 }

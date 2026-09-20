@@ -176,5 +176,10 @@
 	"Verified": "تأییدشده",
 	"Leave hub": "ترک هاب",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "این هاب را ترک می‌کنید؟ پست‌های شما روی هاب می‌مانند و اگر دوباره بپیوندید همچنان آنجا هستند.",
-	"Show only posts from this hub": "فقط پست‌های این هاب را نشان بده"
+	"Show only posts from this hub": "فقط پست‌های این هاب را نشان بده",
+	"Sending...": "در حال ارسال...",
+	"Publishing...": "در حال انتشار...",
+	"Published": "منتشر شد",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "روی این گره ذخیره شد، اما هنوز هیچ همتایی آن را نپذیرفته است. در همگام‌سازی بعدی دوباره تلاش می‌شود.",
+	"Could not save your reply:": "ذخیره پاسخ شما ممکن نبود:"
 }

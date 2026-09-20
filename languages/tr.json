@@ -176,5 +176,10 @@
 	"Verified": "Doğrulanmış",
 	"Leave hub": "Hub'dan ayrıl",
 	"Leave this hub? Your posts stay on the hub and will still be there if you rejoin.": "Bu hub'dan ayrılıyor musunuz? Gönderileriniz hub'da kalır ve yeniden katılırsanız orada olur.",
-	"Show only posts from this hub": "Yalnızca bu hub'daki gönderileri göster"
+	"Show only posts from this hub": "Yalnızca bu hub'daki gönderileri göster",
+	"Sending...": "Gönderiliyor...",
+	"Publishing...": "Yayınlanıyor...",
+	"Published": "Yayınlandı",
+	"Saved on this node, but no peers accepted it yet. It will retry on the next sync.": "Bu düğümde kaydedildi ancak henüz hiçbir eş kabul etmedi. Bir sonraki eşitlemede yeniden denenecek.",
+	"Could not save your reply:": "Yanıtınız kaydedilemedi:"
 }
