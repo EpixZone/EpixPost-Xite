@@ -570,8 +570,15 @@
     // derives a stable per-(author, comment_uri) CRDT key, so liking again
     // supersedes rather than piling up, and an unlike is a signed tombstone
     // for that same key. One like per user per comment falls out of the key,
-    // not out of any check the client has to make. cb(true/false).
-    toggleCommentLike(comment_uri, liked, cb) {
+    // not out of any check the client has to make.
+    //
+    // cb(true/false) fires on the WRITE, not on the publish. Signing and
+    // publishing a user content.json takes seconds, and the node serializes
+    // them, so a like queued behind a comment used to sit disabled for ten
+    // seconds for work the reader does not care about: the record is already
+    // on disk and already theirs. cb_published reports the network outcome
+    // for anyone who does care.
+    toggleCommentLike(comment_uri, liked, cb, cb_published) {
       if (cb == null) cb = null;
       if (liked) {
         this.comment_likes[comment_uri] = true;
@@ -610,9 +617,12 @@
           var container_out = { "record_format": "epix-orset-1", "post": [signed] };
           return Page.cmd("fileWrite", [this.getPath(this.hub) + "/comment_likes.json", Text.fileEncode(container_out)], (res_write) => {
             Page.content.update();
+            if (cb) cb(res_write === "ok");
             return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, (res_pub) => {
               this.log("toggleCommentLike", comment_uri, liked, res_write, res_pub);
-              if (cb) cb(res_write === "ok");
+              if (typeof cb_published === "function") {
+                cb_published(res_pub);
+              }
             });
           });
         });
