@@ -880,19 +880,38 @@
       }
       this.settlePendingComments(tree, visible);
       if (focus_uri && tree.by_uri[focus_uri]) {
+        // Build the ancestor chain as a CASCADE, each comment one step in
+        // from the one it answers, the way a threaded forum reads.
+        //
+        // It used to render as two flat blocks: every ancestor together in
+        // one indented box, then the focused comment flush left underneath.
+        // That put the reply LESS far in than the comment it was replying to,
+        // so the conversation appeared to run backwards, and a chain three
+        // deep showed no structure at all because every ancestor sat at the
+        // same depth.
+        //
+        // Assembled innermost-first: start with the focused comment and its
+        // replies, then wrap it in one `.thread-chain` per ancestor, walking
+        // outwards. Each wrapper draws the indent and the line down the left.
         var ancestors = this.getAncestors(focus_uri, tree);
-        if (ancestors.length) {
-          parts.push(h("div.thread-context", ancestors.map((comment) => {
-            return this.renderComment(comment, tree, {connector: true});
-          })));
-        }
-        parts.push(this.renderComment(tree.by_uri[focus_uri], tree, {focused: true}));
         var replies = tree.children[focus_uri] || [];
-        if (replies.length) {
-          parts.push(h("div.thread-replies", replies.map((comment) => {
+        var node = [
+          this.renderComment(tree.by_uri[focus_uri], tree, {focused: true}),
+          replies.length ? h("div.thread-chain.thread-replies", {
+            key: "replies_" + focus_uri
+          }, replies.map((comment) => {
             return this.renderComment(comment, tree, {show_chip: true, nested: true});
-          })));
+          })) : void 0
+        ];
+        for (i = ancestors.length - 1; i >= 0; i--) {
+          node = [
+            this.renderComment(ancestors[i], tree, {connector: true}),
+            h("div.thread-chain", {
+              key: "chain_" + this.getCommentUri(ancestors[i])
+            }, node)
+          ];
         }
+        parts.push(h("div.thread-root", {key: "root_" + focus_uri}, node));
       } else {
         parts = tree.top.map((comment) => {
           var uri = this.getCommentUri(comment);

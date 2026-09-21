@@ -1027,13 +1027,27 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 .post.thread .comment-list { font-size: 15px }
 .thread-branch { border-bottom: 1px solid var(--epix-border); padding: 2px 0 }
 .thread-branch:last-child { border-bottom: none }
-.comment-children { margin-left: 10px; padding-left: 16px; border-left: 2px solid var(--epix-border) }
-.thread-context { padding-left: 16px; margin-left: 10px; border-left: 2px solid var(--epix-border) }
-/* Replies to the comment a thread is focused on. Without this they sit flush
-   left, which reads as another top-level comment rather than an answer to the
-   one above - the ancestors above them are indented, so the reply looked like
-   it had jumped out of the conversation. */
-.thread-replies { margin-left: 10px; padding-left: 16px; border-left: 2px solid var(--epix-border) }
+/* ---- threadlines ----------------------------------------------------
+   One rule for every level of nesting, so an answer always sits one step in
+   from what it answers and the line down the left makes the depth readable
+   at a glance. The line is the strong border, not the faint one: at 2px in
+   the faint colour it was almost invisible against the surface, which is
+   what made replies look unrelated to their parent. */
+.comment-children,
+.thread-chain {
+	margin-left: 14px; padding-left: 18px;
+	border-left: 2px solid var(--epix-border-strong);
+	transition: border-color 0.15s
+}
+/* Hovering anywhere in a branch lights its line, so you can see exactly how
+   far a reply belongs - the affordance threaded forums use. */
+.comment-children:hover,
+.thread-chain:hover { border-left-color: var(--epix-accent) }
+/* An inner branch lighting up must not leave its parent's line lit too. */
+.comment-children:hover .comment-children,
+.thread-chain:hover .thread-chain { border-left-color: var(--epix-border-strong) }
+.comment-children .comment-children:hover,
+.thread-chain .thread-chain:hover { border-left-color: var(--epix-accent) }
 .comment.focused {
 	background-color: var(--epix-surface); border: 1px solid var(--epix-accent);
 	border-radius: var(--epix-radius-md); padding: 10px 12px; margin: 8px 0
