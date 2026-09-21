@@ -1029,6 +1029,11 @@ a.img-pill:hover { text-decoration: none; background-color: rgba(2, 2, 2, 0.75) 
 .thread-branch:last-child { border-bottom: none }
 .comment-children { margin-left: 10px; padding-left: 16px; border-left: 2px solid var(--epix-border) }
 .thread-context { padding-left: 16px; margin-left: 10px; border-left: 2px solid var(--epix-border) }
+/* Replies to the comment a thread is focused on. Without this they sit flush
+   left, which reads as another top-level comment rather than an answer to the
+   one above - the ancestors above them are indented, so the reply looked like
+   it had jumped out of the conversation. */
+.thread-replies { margin-left: 10px; padding-left: 16px; border-left: 2px solid var(--epix-border) }
 .comment.focused {
 	background-color: var(--epix-surface); border: 1px solid var(--epix-accent);
 	border-radius: var(--epix-radius-md); padding: 10px 12px; margin: 8px 0

@@ -136,6 +136,13 @@
       window.scroll(window.pageXOffset, 0);
       Page.history_state["scrollTop"] = 0;
       Page.on_loaded.resolved = false;
+      // resolve() CONSUMES the callback list, so markLoaded has to be put back
+      // or body.loaded never returns - and `body` is `overflow: hidden` until
+      // it does, so the page cannot be scrolled at all. EpixPost.navigate
+      // carries the same line; this path (tapping a comment to open its
+      // thread) was missing it, which is why a long thread reached this way
+      // was stuck.
+      Page.on_loaded.then(Page.markLoaded);
       document.body.classList.remove("loaded");
       Page.setUrl(url);
     }
