@@ -4,8 +4,8 @@
   // preview data, so nothing shifts when the real image arrives. Flow when
   // the image scrolls into view (data saver OFF): blurred preview ->
   // optionalFileInfo -> swap to the real file if downloaded, otherwise
-  // fileNeed + "Downloading from peers..." until Image.onload swaps it
-  // (20s timeout -> tap to retry). Data saver ON: preview + "Show image".
+  // fileNeed completion -> Image.onload swaps it. A failed request can retry
+  // while visible. Data saver ON: preview + "Show image".
   class PostMeta {
     constructor(post, meta) {
       this.post = post;
@@ -22,17 +22,17 @@
       this.handleVideoError = this.handleVideoError.bind(this);
       this.handleVideoRetry = this.handleVideoRetry.bind(this);
       this.render = this.render.bind(this);
-      this.loading = false;
-      this.loaded = false;
-      this.failed = false;
-      this.download_timer = null;
-      this.retry_timer = null;
+      this.image_download = ImageDownload.forPath(this.getImagePath());
       // The magnet video mounts its <video> (and starts the node fetch) only
       // after the user clicks play, so a feed full of magnet posts doesn't open
       // a stream for every one.
       this.video_started = false;
       this.video_failed = false;
     }
+
+    get loading() { return this.image_download.loading; }
+    get loaded() { return this.image_download.loaded; }
+    get failed() { return this.image_download.failed; }
 
     getImagePath() {
       return this.post.user.getPath() + "/" + this.post.row.post_id + ".jpg";
@@ -50,15 +50,10 @@
         } catch (e) {
           this.log("Image preview error: " + e);
         }
-        // Components are recreated on re-render, so a per-instance failed
-        // flag alone would restart the 20s download loop forever on images
-        // no reachable peer has. Remember failures app-wide for 10 minutes.
-        if (Page.failed_images[this.getImagePath()] > Time.timestamp() - 600) {
-          this.failed = true;
-        }
+        this.image_download.watch(tag, () => !this.isDataSaver());
         Page.cmd("optionalFileInfo", this.getImagePath(), (res) => {
           this.image_preview.optional_info = res;
-          if (!this.isDataSaver() && !this.loaded && !this.failed) {
+          if (!this.isDataSaver() && !this.loaded) {
             if (res != null ? res.is_downloaded : void 0) {
               this.loadFullsize();
             } else if (res) {
@@ -72,44 +67,11 @@
     }
 
     startDownload() {
-      this.loading = true;
-      this.failed = false;
-      Page.cmd("fileNeed", [this.getImagePath()]);
-      this.loadFullsize();
-      clearTimeout(this.download_timer);
-      this.download_timer = setTimeout((() => {
-        if (!this.loaded) {
-          this.loading = false;
-          this.failed = true;
-          Page.failed_images[this.getImagePath()] = Time.timestamp();
-          clearTimeout(this.retry_timer);
-          Page.projector.scheduleRender();
-        }
-      }), 20000);
-      Page.projector.scheduleRender();
+      this.image_download.start();
     }
 
     loadFullsize() {
-      var image = new Image();
-      image.src = this.getImagePath();
-      image.onload = () => {
-        clearTimeout(this.download_timer);
-        clearTimeout(this.retry_timer);
-        this.loading = false;
-        this.failed = false;
-        this.loaded = true;
-        if (this.image_preview.optional_info) {
-          this.image_preview.optional_info.is_downloaded = 1;
-        }
-        Page.projector.scheduleRender();
-      };
-      image.onerror = () => {
-        // Not downloaded yet: poll until the 20s timeout gives up
-        if (!this.loaded && !this.failed) {
-          clearTimeout(this.retry_timer);
-          this.retry_timer = setTimeout(this.loadFullsize, 2500);
-        }
-      };
+      this.image_download.load();
     }
 
     handleImageClick(e) {
@@ -117,14 +79,13 @@
       if (this.loaded || ((ref = this.image_preview.optional_info) != null ? ref.is_downloaded : void 0)) {
         Page.overlay.zoomImageTag(e.currentTarget, this.image_preview.width, this.image_preview.height);
       } else {
-        this.startDownload();
+        this.image_download.start(true);
       }
       return false;
     }
 
     handleRetryClick() {
-      delete Page.failed_images[this.getImagePath()];
-      this.startDownload();
+      this.image_download.start(true);
       return false;
     }
 
@@ -151,9 +112,7 @@
           this.image_preview.optional_info.is_downloaded = 0;
           this.image_preview.optional_info.peer -= 1;
         }
-        this.loaded = false;
-        this.loading = false;
-        this.failed = false;
+        this.image_download.reset();
         Page.projector.scheduleRender();
       });
     }
