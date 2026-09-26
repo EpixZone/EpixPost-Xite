@@ -61,9 +61,6 @@
       this.xid_site = "epix1xauthduuyn63k6kj54jzgp4l8nnjlhrsyaku8c";
       this.cache_time = Time.timestamp();
       this.xid_profiles = {};
-      // Image paths whose optional download timed out, with the fail time;
-      // keeps the retry state across component re-creation (see PostMeta).
-      this.failed_images = {};
       this.can_go_back = false;
       this.on_site_info = new Deferred();
       this.on_local_storage = new Deferred();
@@ -906,6 +903,7 @@
       }
       if (site_info.event != null ? site_info.event[0] === "file_done" : void 0) {
         var file_name = site_info.event[1];
+        ImageDownload.fileDone("merged-EpixPost/" + site_info.address + "/" + file_name);
         if (file_name.indexOf(site_info.auth_address) !== -1 && (Page.user != null ? Page.user.auth_address : void 0) !== site_info.auth_address) {
           this.checkUser(() => {
             this.content.update();
