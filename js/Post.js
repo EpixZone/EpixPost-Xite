@@ -54,17 +54,24 @@
     setRow(row) {
       var ref;
       this.row = row;
+      // The user has to exist BEFORE the meta. PostMeta resolves its image
+      // path in its constructor, through `post.user.getPath()`, so building
+      // the meta first threw "Cannot read properties of undefined (reading
+      // 'getPath')" on every post that has meta - which is every post with an
+      // image. That throw lands inside ItemList.sync, so it takes down the
+      // WHOLE feed load rather than one row, and the page sits on
+      // "Loading feed..." for ever.
+      this.user = new User({
+        hub: row.site,
+        auth_address: row.directory.replace("data/users/", "")
+      });
+      this.user.row = row;
       if (this.row.meta) {
         this.meta = new PostMeta(this, JSON.parse(this.row.meta));
       }
       if (Page.user) {
         this.liked = Page.user.likes[this.row.key];
       }
-      this.user = new User({
-        hub: row.site,
-        auth_address: row.directory.replace("data/users/", "")
-      });
-      this.user.row = row;
       this.owned = this.user.auth_address === ((ref = Page.user) != null ? ref.auth_address : void 0);
       if (this.owned) {
         this.editable_body = new Editable("div.body", this.handlePostSave, this.handlePostDelete);
