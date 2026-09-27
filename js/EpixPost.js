@@ -34,6 +34,7 @@
       // begin the content path, and only the first may win.
       this.content_started = false;
       this.merged_sites = {};
+      this.merged_sites_retry = null;  // Backoff (ms) while the node cannot list them yet
       // Live download of a hub we merged: see noteHubProgress. Cleared by
       // going quiet, so this is how long without an event counts as finished.
       this.HUB_SYNC_IDLE = 15000;
@@ -294,6 +295,20 @@
     }
 
     onOpenWebsocket(e) {
+      if (this.content_started) {
+        // A reconnect (the node restarted, or the socket dropped): the boot
+        // path below runs once per page, so refresh what it loaded. A tab
+        // that booted while the node still answered "Not a merger xite"
+        // otherwise kept an empty hub list for the life of the page and sat
+        // on "Connecting to Epix Post Hub..." through every restart.
+        this.log("Websocket reopened, refreshing site info");
+        this.updateSiteInfo(() => {
+          if (this.content) {
+            this.content.update();
+          }
+        });
+        return;
+      }
       this.cmd("wrapperSetViewport", "width=device-width, initial-scale=1");
       this.setLoadingProgress(15, _("Loading site info..."));
       // The language file must land BEFORE the content path starts. Nearly
@@ -346,6 +361,17 @@
       // composer) can resolve hub titles from one cache. Values are truthy
       // either way, so the seeded-checks all keep working.
       this.cmd("mergerSiteList", true, (merged_sites) => {
+        if (!merged_sites || typeof merged_sites !== "object" || merged_sites.error) {
+          // The node answers "Not a merger xite" until the xite's own
+          // content.json has landed, and a page booted mid-clone gets exactly
+          // that. Storing the error as the hub list made isHubConnected() false
+          // for good. Keep what we have and ask again shortly, backing off.
+          this.merged_sites_retry = Math.min((this.merged_sites_retry || 1000) * 2, 15000);
+          this.log("Merged site list not ready, retrying in", this.merged_sites_retry, "ms:", merged_sites != null ? merged_sites.error : merged_sites);
+          setTimeout(() => this.updateSiteInfo(cb), this.merged_sites_retry);
+          return;
+        }
+        this.merged_sites_retry = null;
         this.merged_sites = merged_sites;
         on_site_info.then(() => {
           if (this.sitePermissions().indexOf("Merger:EpixPost") >= 0) {
