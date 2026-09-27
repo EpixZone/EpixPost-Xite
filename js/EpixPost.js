@@ -788,12 +788,25 @@
         sync.files += 1;
         sync.last = site_info.event[1];
         sync.dialing = false;
+        sync.dialing_since = null;
       } else if (kind === "file_added") {
         // A fetch pass just started: more files are coming, but dialing the
         // peers first can be a long silence. Hold the bar through it, and say
         // "connecting" rather than leaving the previous file's name up - a
         // stale name sitting there is what reads as a stuck download.
+        //
+        // But only for one wait window in total. Peers hint a hub about once
+        // a minute and each hint starts a pass; passes that land nothing
+        // (files no peer can serve) each re-armed the long window, so the bar
+        // sat on "Connecting to peers" indefinitely. Measure the silence from
+        // the first pass that landed nothing, not from the latest one.
         sync.dialing = true;
+        if (!sync.dialing_since) {
+          sync.dialing_since = Date.now();
+        }
+      } else if (kind === "file_failed") {
+        // The node gave up on a file: the pass is not dialing any more.
+        sync.dialing = false;
       }
       this.armHubSyncTimer();
       RateLimit(500, this.updateContentNoanim);
@@ -824,6 +837,10 @@
     hubSyncWindow() {
       var sync = this.hub_sync;
       if (sync && sync.dialing) {
+        if (sync.dialing_since && Date.now() - sync.dialing_since >= this.HUB_SYNC_WAIT) {
+          // Passes keep starting and nothing lands: stop holding the bar.
+          return 0;
+        }
         return this.HUB_SYNC_WAIT;
       }
       return this.HUB_SYNC_IDLE;

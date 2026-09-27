@@ -144,3 +144,42 @@ test("a reopened websocket refreshes the site info instead of doing nothing", ()
 });
 
 
+
+// The hub sync banner. Peers hint a hub about once a minute; a pass that
+// lands nothing must not keep the bar up past one wait window in total.
+function hubEvent(kind, extra) {
+  return Object.assign({ address: HUB, event: [kind, "data/users/x.epix/data.json"], peers: 3 }, extra || {});
+}
+
+test("a pass that starts and lands nothing keeps the bar up for one wait window only", () => {
+  const { Page } = page();
+  Page.noteHubProgress(hubEvent("file_added"));
+  assert.equal(Page.hubSyncActive(), true, "a starting pass shows the bar");
+  assert.equal(Page.hubSyncWindow(), Page.HUB_SYNC_WAIT);
+  // Another hint-driven pass starts after the wait window with nothing landed.
+  Page.hub_sync.dialing_since = Date.now() - Page.HUB_SYNC_WAIT - 1000;
+  Page.noteHubProgress(hubEvent("file_added"));
+  assert.equal(Page.hubSyncWindow(), 0, "the silence is measured from the first idle pass");
+  assert.equal(Page.hubSyncActive(), false, "the bar comes down");
+});
+
+test("a file landing resets the idle measurement", () => {
+  const { Page } = page();
+  Page.noteHubProgress(hubEvent("file_added"));
+  Page.hub_sync.dialing_since = Date.now() - Page.HUB_SYNC_WAIT - 1000;
+  Page.noteHubProgress(hubEvent("file_done", { started_task_num: 4, tasks: 3 }));
+  assert.equal(Page.hub_sync.dialing_since, null);
+  assert.equal(Page.hub_sync.files, 1);
+  assert.equal(Page.hubSyncActive(), true, "a live download stays up");
+  Page.noteHubProgress(hubEvent("file_added"));
+  assert.equal(Page.hubSyncWindow(), Page.HUB_SYNC_WAIT, "a fresh pass after a landing waits again");
+});
+
+test("a failed file ends the dialing state so the short idle window applies", () => {
+  const { Page } = page();
+  Page.noteHubProgress(hubEvent("file_added"));
+  assert.equal(Page.hubSyncWindow(), Page.HUB_SYNC_WAIT);
+  Page.noteHubProgress(hubEvent("file_failed"));
+  assert.equal(Page.hub_sync.dialing, false);
+  assert.equal(Page.hubSyncWindow(), Page.HUB_SYNC_IDLE);
+});
