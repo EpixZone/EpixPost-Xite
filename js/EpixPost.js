@@ -382,7 +382,7 @@
             this.on_local_storage.then(() => {
               var removed_hubs = this.local_storage.settings.removed_hubs || {};
               for (var address in default_hubs) {
-                if (!this.merged_sites[address] && !removed_hubs[address]) {
+                if (!this.merged_sites[address] && !removed_hubs[address] && !this.hubAddInFlight(address)) {
                   this.log("Auto-adding default hub", address);
                   this.beginHubSync(address);
                   this.cmd("mergerSiteAdd", address);
@@ -437,10 +437,21 @@
       this.setHubRemoved(address, false);
       if (this.merged_sites[address]) {
         if (typeof cb === "function") cb(true);
+      } else if (this.hubAddInFlight(address)) {
+        if (typeof cb === "function") cb(true);
       } else {
         this.beginHubSync(address);
         Page.cmd("mergerSiteAdd", address, cb);
       }
+    }
+
+    // An add we already asked the node for and that has not finished (the
+    // node signals site_done, see endHubSync). Every hub file that landed
+    // meanwhile re-ran updateSiteInfo, the hub was not listed yet, and each
+    // run asked the node to add it again: one "Added 1 new xite" per file.
+    hubAddInFlight(address) {
+      var sync = this.hub_sync;
+      return !!(sync && sync.address === address && sync.adding && Date.now() - sync.started < this.HUB_SYNC_MAX);
     }
 
     // Remember (or forget) that the user explicitly removed a hub, so

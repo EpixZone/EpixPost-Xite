@@ -126,6 +126,35 @@ test("the backoff grows and caps while the node keeps refusing", () => {
   assert.deepEqual(delays, [2000, 4000, 8000, 15000, 15000, 15000]);
 });
 
+test("a default hub whose add is in flight is not asked for again", () => {
+  const { Page, calls, answer, siteInfo } = page();
+  const adds = () => calls.filter((c) => c.cmd === "mergerSiteAdd").length;
+  // Boot: the hub is not merged yet, so the page asks the node to add it.
+  Page.updateSiteInfo();
+  answer("mergerSiteList", {});
+  answer("siteInfo", siteInfo());
+  assert.equal(adds(), 1, "the first refresh adds the default hub");
+  assert.equal(Page.hubAddInFlight(HUB), true);
+
+  // Each hub file landing re-runs the refresh; the hub is still not listed.
+  for (let i = 0; i < 3; i++) {
+    Page.updateSiteInfo();
+    answer("mergerSiteList", {});
+    answer("siteInfo", siteInfo());
+  }
+  assert.equal(adds(), 1, "an add in flight is not repeated");
+  assert.equal(Page.needSite(HUB, () => {}), undefined);
+  assert.equal(adds(), 1, "needSite does not repeat it either");
+
+  // The node reports the add finished: the in-flight state ends, and the
+  // refresh that follows may ask again for a hub that is still missing.
+  Page.noteHubProgress({ address: HUB, event: ["site_done", HUB] });
+  assert.equal(Page.hubAddInFlight(HUB), false);
+  answer("mergerSiteList", {});
+  answer("siteInfo", siteInfo());
+  assert.equal(adds(), 2, "after the add finished, a still-missing hub is asked for again");
+});
+
 test("a reopened websocket refreshes the site info instead of doing nothing", () => {
   const { Page, calls, answer, siteInfo } = page();
   Page.onOpenWebsocket();
