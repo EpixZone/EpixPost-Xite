@@ -202,10 +202,10 @@
 
     hasHelp(cb) {
       return Page.cmd("OptionalHelpList", [this.hub], (helps) => {
-        if (!helps || helps.error) {
-          return cb(false);
+        if (!helps || typeof helps !== "object" || Array.isArray(helps) || helps.error) {
+          return cb(false, false);
         }
-        return cb(helps["data/users/" + (this.getDirectory())]);
+        return cb(Object.prototype.hasOwnProperty.call(helps, "data/users/" + this.getDirectory()), true);
       });
     }
 

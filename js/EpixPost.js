@@ -644,6 +644,35 @@
       return JSON.stringify([site_info.cert_user_id, site_info.auth_address, site_info.xid_directory]);
     }
 
+    enableOwnImageHelp(user_hubs, user_dir, isCurrent) {
+      var settings = this.local_storage && this.local_storage.settings;
+      if (!settings || !isCurrent()) return;
+      var preferences = settings.own_image_help || (settings.own_image_help = {});
+      var directory = "data/users/" + user_dir;
+      var title = this.user.getDisplayName() + "'s new images";
+      Object.keys(user_hubs).forEach((hub) => {
+        var key = hub + "/" + user_dir;
+        var hasPreference = () => Object.prototype.hasOwnProperty.call(preferences, key)
+          || (this.own_image_help_pending && this.own_image_help_pending[key]);
+        // Apply the default once per profile and hub. A later opt-out, including
+        // one made through the node's sidebar, must not be undone on refresh.
+        if (hasPreference()) return;
+        this.cmd("OptionalHelpList", [hub], (helps) => {
+          if (!isCurrent() || hasPreference() || !helps || typeof helps !== "object" || Array.isArray(helps) || helps.error) return;
+          var remember = (res) => {
+            if (!isCurrent() || hasPreference() || !res || res.error) return;
+            preferences[key] = true;
+            this.saveLocalStorage();
+          };
+          if (Object.prototype.hasOwnProperty.call(helps, directory)) {
+            remember(true);
+          } else {
+            this.cmd("OptionalHelp", [directory, title, hub], remember);
+          }
+        });
+      });
+    }
+
     checkUser(cb) {
       if (!this.user_check_callbacks) this.user_check_callbacks = [];
       if (typeof cb === "function") this.user_check_callbacks.push(cb);
@@ -669,6 +698,7 @@
       if (this.user_identity !== identity) {
         this.user_identity_generation = (this.user_identity_generation || 0) + 1;
         this.user_identity = identity;
+        this.own_image_help_pending = {};
         useAnonymous();
         this.projector.scheduleRender();
       }
@@ -724,6 +754,7 @@
               if (!isCurrent()) return;
               this.user = user;
               this.user_hubs = user_hubs;
+              this.enableOwnImageHelp(user_hubs, user_dir, isCurrent);
               // Migration signs records with the selected account, so it
               // must also stop if the user switches while files are loading.
               user.migratePosts(null, isIdentityCurrent);
