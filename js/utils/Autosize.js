@@ -41,17 +41,44 @@
     }
 
     autoHeight() {
-      var height_before = this.node.style.height;
-      if (height_before) {
-        this.node.style.height = "0px";
-      }
-      var h_val = this.node.offsetHeight;
-      var scrollh = this.node.scrollHeight;
-      this.node.style.height = height_before;
-      if (scrollh > h_val) {
-        anime({ targets: this.node, height: scrollh, scrollTop: 0 });
+      var node = this.node;
+      if (!node || !node.isConnected) return;
+      var style = window.getComputedStyle(node);
+      var height_before = node.offsetHeight;
+      var scroll_before = node.scrollTop;
+      // Collapsing the live editor to measure it also collapses its scroll
+      // container, which jumps away from the caret in long posts. Measure a
+      // hidden copy at the same width without changing the document layout.
+      var measure = node.cloneNode(false);
+      measure.removeAttribute("id");
+      measure.removeAttribute("name");
+      measure.setAttribute("aria-hidden", "true");
+      measure.tabIndex = -1;
+      Object.assign(measure.style, {
+        position: "fixed", top: "0px", left: "0px", visibility: "hidden",
+        pointerEvents: "none", height: "0px", minHeight: "0px", maxHeight: "none",
+        width: style.width, overflow: "hidden"
+      });
+      measure.value = node.value;
+      node.parentNode.appendChild(measure);
+      var height = measure.scrollHeight;
+      if (style.boxSizing === "border-box") {
+        height += parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
       } else {
-        this.node.style.height = height_before;
+        height -= parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      }
+      measure.remove();
+      node.style.height = Math.ceil(height) + "px";
+      // New lines may scroll inside the textarea before it grows. Transfer
+      // that consumed scroll to its ancestors so the caret stays in view.
+      if (document.activeElement === node && node.offsetHeight > height_before && scroll_before > node.scrollTop) {
+        var remaining = (scroll_before - node.scrollTop) * (node.getBoundingClientRect().height / node.offsetHeight || 1);
+        for (var parent = node.parentElement; parent && remaining > 0; parent = parent.parentElement) {
+          var scale = parent.getBoundingClientRect().height / parent.offsetHeight || 1;
+          var before = parent.scrollTop;
+          parent.scrollTop += remaining / scale;
+          remaining -= (parent.scrollTop - before) * scale;
+        }
       }
     }
 
