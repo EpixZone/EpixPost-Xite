@@ -16,11 +16,12 @@
       this.need_update = true;
       this.directories = [];
       // Main feed list (set by ContentFeed): honors the feed hub filter.
-      // Profile/thread lists keep it false and stay unfiltered.
+      // Profile/thread lists ignore that setting; threads set filter_hub.
       this.is_feed = false;
       this.loaded = false;
       this.hide_empty = false;
       this.filter_post_ids = null;
+      this.filter_hub = null;
       this.limit = 10;
       // Skip enter/exit animations on background sync refreshes
       this.noanim = false;
@@ -77,15 +78,16 @@
       return parts.join("|");
     }
 
-    // The feed's hub filter, or null. Only used on the main feed; the value
+    // The thread's explicit hub or the main feed's selected hub. The value
     // is bound as a query param and strictly validated (address shape +
     // still seeded) before it gets near the SQL.
     getFeedHub() {
-      if (!this.is_feed) {
-        return null;
-      }
       var ref, ref1;
-      var feed_hub = (ref = Page.local_storage) != null ? ((ref1 = ref.settings) != null ? ref1.feed_hub : void 0) : void 0;
+      var feed_hub = this.filter_hub;
+      if (!feed_hub) {
+        if (!this.is_feed) return null;
+        feed_hub = (ref = Page.local_storage) != null ? ((ref1 = ref.settings) != null ? ref1.feed_hub : void 0) : void 0;
+      }
       if (!feed_hub || !/^epix1[a-z0-9]+$/.test(feed_hub)) {
         return null;
       }
