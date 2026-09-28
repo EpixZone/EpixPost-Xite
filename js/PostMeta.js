@@ -90,17 +90,41 @@
     }
 
     handleOptionalHelpClick() {
-      this.post.user.hasHelp((optional_helping) => {
-        this.optional_helping = optional_helping;
-        if (this.optional_helping) {
-          Page.cmd("OptionalHelpRemove", ["data/users/" + this.post.user.auth_address, this.post.user.hub]);
-          this.optional_helping = false;
-        } else {
-          Page.cmd("OptionalHelp", ["data/users/" + this.post.user.auth_address, this.post.row.user_name + "'s new images", this.post.user.hub]);
-          this.optional_helping = true;
+      var identity = Page.getUserIdentity();
+      var identity_generation = Page.user_identity_generation;
+      var isCurrent = () => identity === Page.getUserIdentity() && identity_generation === Page.user_identity_generation;
+      var directory = this.post.user.getDirectory();
+      var hub = this.post.user.hub;
+      var site_info = Page.site_info || {};
+      var own_directory = site_info.xid_directory || site_info.auth_address;
+      var own = site_info.cert_user_id && directory === own_directory;
+      this.post.user.hasHelp((optional_helping, valid) => {
+        if (!isCurrent() || valid === false) return;
+        var helping = !optional_helping;
+        var preferences, pending;
+        var key = hub + "/" + directory;
+        if (own && Page.local_storage && Page.local_storage.settings) {
+          preferences = Page.local_storage.settings.own_image_help || (Page.local_storage.settings.own_image_help = {});
+          // Reserve the user's choice before the reply so a pending default
+          // lookup cannot turn image distribution back on in the meantime.
+          if (!Page.own_image_help_pending) Page.own_image_help_pending = {};
+          pending = Page.own_image_help_pending[key] = {};
         }
-        Page.content_profile.update();
-        Page.projector.scheduleRender();
+        var command = helping ? "OptionalHelp" : "OptionalHelpRemove";
+        var params = helping
+          ? ["data/users/" + directory, this.post.user.getDisplayName() + "'s new images", hub]
+          : ["data/users/" + directory, hub];
+        Page.cmd(command, params, (res) => {
+          if (pending && Page.own_image_help_pending[key] === pending) delete Page.own_image_help_pending[key];
+          if (!isCurrent() || !res || res.error) return;
+          this.optional_helping = helping;
+          if (preferences) {
+            preferences[key] = helping;
+            Page.saveLocalStorage();
+          }
+          Page.content_profile.update();
+          Page.projector.scheduleRender();
+        });
       });
       return true;
     }
