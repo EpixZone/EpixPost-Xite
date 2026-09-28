@@ -46,6 +46,7 @@
         this.post_list = new PostList();
         this.post_list.directories = ["data/users/" + this.getUserDir()];
         this.post_list.filter_post_ids = [post_id];
+        this.post_list.filter_hub = hub;
         this.post_list.limit = 1;
         this.post_list.hide_empty = true;
         this.post_list.thread_mode = true;

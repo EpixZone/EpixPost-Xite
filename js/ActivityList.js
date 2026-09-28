@@ -33,7 +33,9 @@
         for (var j = 0; j < group.length; j++) {
           var row = group[j];
           parts.push([
-            row.type, row.date_added, row.auth_address,
+            row.type, row.date_added, row.site, row.auth_address,
+            row.subject.hub, row.subject.auth_address, row.post_id,
+            row.subject.user_name, row.subject.cert_user_id,
             row.body != null ? row.body.length : 0
           ].join("."));
         }
@@ -99,6 +101,10 @@
         for (var i = 0; i < rows.length; i++) {
           var row = rows[i];
           row.auth_address = row.directory.replace("data/users/", "");
+          // The subject URI identifies the hub containing the post (or the
+          // followed profile). Profile metadata can be absent or name a
+          // different preferred hub, so it must not replace this target.
+          row.subject_hub = row.subject.split("/")[0];
           var subject_address = row.subject.replace(/_.*/, "").replace(/.*\//, "");
           row.post_id = row.subject.replace(/.*_/, "").replace(/.*\//, "");
           row.subject_address = subject_address;
@@ -112,14 +118,14 @@
           for (var j = 0; j < subject_rows.length; j++) {
             var subject_row = subject_rows[j];
             subject_row.auth_address = subject_row.directory.replace("data/users/", "");
-            subject_db[subject_row.auth_address] = subject_row;
+            subject_db[subject_row.site + "/" + subject_row.auth_address] = subject_row;
           }
           for (var k = 0; k < rows.length; k++) {
             var row = rows[k];
-            row.subject = subject_db[row.subject_address];
-            if (row.subject == null) row.subject = {};
-            if (row.subject.auth_address == null) row.subject.auth_address = row.subject_auth_address;
-            if (row.subject.hub == null) row.subject.hub = row.subject_hub;
+            row.subject = Object.assign({}, subject_db[row.subject_hub + "/" + row.subject_address], {
+              auth_address: row.subject_address,
+              hub: row.subject_hub
+            });
             if (row.subject.user_name == null) row.subject.user_name = row.subject_user_name;
           }
           var last_row = null;
@@ -165,7 +171,7 @@
       if (!activity.subject.user_name && !((ref = Page.xid_profiles[activity.subject.auth_address]) != null ? ref.name : void 0)) {
         return back;
       }
-      var activity_user_link = "?Profile/" + activity.hub + "/" + activity.auth_address + "/" + activity.cert_user_id;
+      var activity_user_link = "?Profile/" + activity.site + "/" + activity.auth_address + "/" + (activity.cert_user_id || '');
       var subject_user_link = "?Profile/" + activity.subject.hub + "/" + activity.subject.auth_address + "/" + (activity.subject.cert_user_id || '');
       var subject_post_link = "?Post/" + activity.subject.hub + "/" + activity.subject.auth_address + "/" + activity.post_id;
       var activity_display_name = Page.getXidDisplayName(activity.auth_address, activity.user_name);
