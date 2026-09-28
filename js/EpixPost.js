@@ -58,6 +58,10 @@
       this.address = null;
       this.user = false;
       this.user_hubs = {};
+      this.user_check_generation = 0;
+      this.user_check_callbacks = [];
+      this.user_identity = null;
+      this.user_identity_generation = 0;
       this.user_loaded = false;
       this.xid_site = "epix1xauthduuyn63k6kj54jzgp4l8nnjlhrsyaku8c";
       this.cache_time = Time.timestamp();
@@ -357,6 +361,7 @@
     updateSiteInfo(cb) {
       if (cb == null) cb = null;
       var on_site_info = new Deferred();
+      var identity_generation = this.user_identity_generation;
       // query_site_info=true so every consumer (hub pills, filter menu,
       // composer) can resolve hub titles from one cache. Values are truthy
       // either way, so the seeded-checks all keep working.
@@ -394,6 +399,12 @@
         });
       });
       this.cmd("siteInfo", {}, (site_info) => {
+        // A refresh started before a certificate change must not restore the
+        // old identity after the node has already pushed the new one.
+        if (identity_generation !== this.user_identity_generation) {
+          on_site_info.resolve();
+          return;
+        }
         this.address = site_info.address;
         this.setSiteInfo(site_info);
         on_site_info.resolve();
@@ -551,48 +562,72 @@
       return (profile != null ? profile.bio : void 0) || fallback;
     }
 
+    getUserIdentity(site_info) {
+      if (site_info == null) site_info = this.site_info || {};
+      return JSON.stringify([site_info.cert_user_id, site_info.auth_address, site_info.xid_directory]);
+    }
+
     checkUser(cb) {
-      if (cb == null) cb = null;
-      this.log("Find hub for user", this.site_info.cert_user_id);
-      if (!this.site_info.cert_user_id) {
+      if (!this.user_check_callbacks) this.user_check_callbacks = [];
+      if (typeof cb === "function") this.user_check_callbacks.push(cb);
+      var generation = this.user_check_generation = (this.user_check_generation || 0) + 1;
+      var site_info = this.site_info || {};
+      var identity = this.getUserIdentity(site_info);
+      var auth_address = site_info.auth_address;
+      var user_dir = site_info.xid_directory || auth_address;
+      var isCurrent = () => generation === this.user_check_generation && identity === this.getUserIdentity();
+      var finish = (found) => {
+        if (!isCurrent()) return;
+        // A newer lookup takes over earlier boot callbacks. Dropping those
+        // callbacks on an account switch would leave the loading screen up.
+        var callbacks = this.user_check_callbacks.splice(0);
+        callbacks.forEach((callback) => callback(found));
+        this.projector.scheduleRender();
+      };
+      var useAnonymous = (done) => {
+        this.user_hubs = {};
         this.user = new AnonUser();
-        this.user.updateInfo(cb);
+        this.user.updateInfo(done);
+      };
+      if (this.user_identity !== identity) {
+        this.user_identity_generation = (this.user_identity_generation || 0) + 1;
+        this.user_identity = identity;
+        useAnonymous();
+        this.projector.scheduleRender();
+      }
+      var identity_generation = this.user_identity_generation;
+      var isIdentityCurrent = () => identity_generation === this.user_identity_generation && identity === this.getUserIdentity();
+      this.log("Find hub for user", site_info.cert_user_id);
+      if (!site_info.cert_user_id) {
+        useAnonymous(() => finish(false));
         return false;
       }
-      var user_dir = this.site_info.xid_directory || this.site_info.auth_address;
       Page.cmd("dbQuery", [
         "SELECT * FROM json WHERE directory = :directory AND file_name = 'data.json'", {
           directory: "data/users/" + user_dir
         }
       ], (res) => {
-        // A dbQuery ERROR is not the same answer as "no rows". While the
-        // database is unavailable (a rebuild in progress, a dbschema change
-        // awaiting a signature) every query fails, and treating that as "this
-        // user has no profile" sends the boot straight into
-        // autoCreateXidProfile, which seeds a BLANK data.json over the real
-        // one and publishes it. Bail instead and let a later boot retry.
-        if (res != null && res.error != null) {
-          this.log("User lookup failed, not deciding anything about the profile:", res.error);
-          this.user = new AnonUser();
-          this.user.updateInfo();
-          if (typeof cb === "function") cb(false);
-          Page.projector.scheduleRender();
+        if (!isCurrent()) return;
+        // Only an actual empty result means that a profile may need seeding.
+        if (!Array.isArray(res)) {
+          this.log("User lookup failed, not deciding anything about the profile:", res);
+          useAnonymous(() => finish(false));
           return;
         }
-        if ((res != null ? res.length : void 0) > 0) {
-          this.user_hubs = {};
+        if (res.length > 0) {
+          var user_hubs = {};
           var user_row;
           for (var i = 0; i < res.length; i++) {
             var row = res[i];
             this.log("Possible site for user", row.site);
-            this.user_hubs[row.site] = row;
+            user_hubs[row.site] = row;
             if (row.site === row.hub) {
               user_row = row;
             }
           }
           var settings_hub = this.local_storage != null ? (this.local_storage.settings != null ? this.local_storage.settings.hub : void 0) : void 0;
-          if (settings_hub && this.user_hubs[settings_hub]) {
-            row = this.user_hubs[settings_hub];
+          if (settings_hub && user_hubs[settings_hub]) {
+            row = user_hubs[settings_hub];
             this.log("Force hub", row.site);
             user_row = row;
             user_row.hub = row.site;
@@ -603,36 +638,47 @@
             this.log("No exact hub match, using first result", user_row.site);
           }
           this.log("Choosen site for user", user_row.site, user_row);
-          this.user = new User({
-            hub: user_row.hub,
-            auth_address: this.site_info.xid_directory || this.site_info.auth_address
-          });
-          this.user.row = user_row;
-          this.resolveXidProfiles([this.site_info.auth_address], () => {
-            this.user.xid_profile = this.xid_profiles[this.site_info.auth_address];
-            this.user.updateInfo(cb);
-            // Additive, idempotent migration of any legacy data.json posts and
-            // comments into their signed merge files. Background; per-item
-            // guarded so it converges as data syncs and never strips the
-            // legacy arrays.
-            this.user.migratePosts();
-            this.user.migrateComments();
+          var user = new User({ hub: user_row.hub, auth_address: user_dir });
+          user.row = user_row;
+          this.resolveXidProfiles([auth_address], () => {
+            if (!isCurrent()) return;
+            user.xid_profile = this.xid_profiles[auth_address];
+            user.updateInfo(() => {
+              if (!isCurrent()) return;
+              this.user = user;
+              this.user_hubs = user_hubs;
+              // Migration signs records with the selected account, so it
+              // must also stop if the user switches while files are loading.
+              user.migratePosts(null, isIdentityCurrent);
+              user.migrateComments(null, isIdentityCurrent);
+              finish(true);
+            });
           });
         } else {
-          this.user = new AnonUser();
-          this.user.updateInfo();
-          if (this.site_info.cert_user_id != null ? this.site_info.cert_user_id.match(/@xid(\.epix)?$/) : void 0) {
-            this.autoCreateXidProfile(cb);
+          useAnonymous();
+          if (site_info.cert_user_id.match(/@xid(\.epix)?$/)) {
+            this.autoCreateXidProfile((created) => {
+              if (!isCurrent()) return;
+              if (created) this.checkUser();
+              else finish(false);
+            }, isCurrent, user_dir, isIdentityCurrent);
           } else {
-            if (typeof cb === "function") cb(false);
+            finish(false);
           }
+          this.projector.scheduleRender();
         }
-        Page.projector.scheduleRender();
       });
     }
 
-    autoCreateXidProfile(cb) {
+    autoCreateXidProfile(cb, isCurrent, user_dir, isIdentityCurrent) {
       if (cb == null) cb = null;
+      if (isCurrent == null) {
+        var identity = this.getUserIdentity();
+        isCurrent = () => identity === this.getUserIdentity();
+      }
+      if (!isCurrent()) return;
+      if (isIdentityCurrent == null) isIdentityCurrent = isCurrent;
+      if (user_dir == null) user_dir = this.site_info.xid_directory || this.site_info.auth_address;
       this.log("Auto-creating hub data for xID user...");
       var default_hub = null;
       // Guarded like every other read of this path (see updateSiteInfo): the
@@ -657,9 +703,11 @@
         return;
       }
       var ensureHub = () => {
+        if (!isCurrent()) return;
         if (!this.merged_sites[default_hub]) {
           this.log("Seeding default hub", default_hub);
           Page.cmd("mergerSiteAdd", default_hub, () => {
+            if (!isCurrent()) return;
             this.updateSiteInfo(() => {
               createProfile();
             });
@@ -669,9 +717,10 @@
         }
       };
       var createProfile = () => {
+        if (!isCurrent()) return;
         var user = new User({
           hub: default_hub,
-          auth_address: this.site_info.auth_address
+          auth_address: user_dir
         });
         // NEVER seed over a profile that already exists. The blank default
         // below is written AND published, so it replaces the live data.json
@@ -686,6 +735,7 @@
           "inner_path": user.getPath(default_hub) + "/data.json",
           "required": false
         }, (existing) => {
+          if (!isCurrent()) return;
           if (existing) {
             // No checkUser retry from here: the lookup that sent us here would
             // fail again and loop. Boot finishes unauthenticated and the next
@@ -697,10 +747,10 @@
           var data = user.getDefaultData();
           data.hub = default_hub;
           this.log("Creating hub data for xID user");
-          user.save(data, default_hub, () => {
-            this.log("Hub data created, re-checking user...");
-            this.checkUser(cb);
-          });
+          user.save(data, default_hub, null, (res) => {
+            if (!isCurrent()) return;
+            if (typeof cb === "function") cb(res === "ok");
+          }, isIdentityCurrent);
         });
       };
       ensureHub();
@@ -922,6 +972,7 @@
         // for every later read. Only a full payload is stored or resolves the
         // boot deferred; the events on it below still process either way.
         var full = site_info.settings != null && site_info.settings.permissions != null;
+        var previous_identity = this.site_info ? this.getUserIdentity() : null;
         var had_permission = this.site_info == null || this.sitePermissions().indexOf("Merger:EpixPost") >= 0;
         if (!this.site_info && full) {
           this.site_info = site_info;
@@ -941,7 +992,8 @@
             }
           });
         }
-        if (site_info.event != null ? site_info.event[0] === "cert_changed" : void 0) {
+        var identity_changed = full && previous_identity != null && previous_identity !== this.getUserIdentity();
+        if (identity_changed || (site_info.event != null ? site_info.event[0] === "cert_changed" : void 0)) {
           this.checkUser((found) => {
             if (Page.site_info.cert_user_id && !found && !Page.site_info.cert_user_id.match(/@xid(\.epix)?$/)) {
               this.setUrl("?Create+profile");

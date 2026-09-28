@@ -2,6 +2,7 @@
 
   class PostList {
     constructor() {
+      this.handleRetryClick = this.handleRetryClick.bind(this);
       this.queryComments = this.queryComments.bind(this);
       this.queryLikes = this.queryLikes.bind(this);
       this.update = this.update.bind(this);
@@ -28,32 +29,31 @@
       this.thread_mode = false;
       this.focus_uri = null;
       this.content_key = null;
+      this.content_scope = null;
+      this.query_rows = null;
+      this.query_failed = false;
     }
 
-    queryComments(post_uris, cb) {
+    queryComments(queries, post_uris, cb) {
       var query = "SELECT post_uri, comment.body, comment.date_added, comment.comment_id, comment.reply_to, json.cert_auth_type, json.cert_user_id, json.user_name, json.hub, json.directory, json.site FROM comment LEFT JOIN json USING (json_id) WHERE ? AND date_added < " + (Time.timestamp() + 120) + " ORDER BY date_added DESC";
-      Page.cmd("dbQuery", [query, { post_uri: post_uris }], cb);
+      queries.run([query, { post_uri: post_uris }], cb);
     }
 
     // Like counts for a set of comments, keyed by comment_uri
     // (<user directory>_<comment_id>), the same uri reply_to and permalinks
     // use. Tombstoned (unliked) records never reach the table, so a plain
     // COUNT is the live total.
-    queryCommentLikes(comment_uris, cb) {
+    queryCommentLikes(queries, comment_uris, cb) {
       if (!comment_uris.length) {
         return cb([]);
       }
       var query = "SELECT comment_uri, COUNT(*) AS likes FROM comment_like WHERE ? GROUP BY comment_uri";
-      Page.cmd("dbQuery", [query, { comment_uri: comment_uris }], (res) => {
-        // An older node without the comment_like table answers with an error;
-        // treat that as "no likes yet" instead of breaking the whole feed.
-        cb(res && !res.error ? res : []);
-      });
+      queries.run([query, { comment_uri: comment_uris }], cb, "comment_like");
     }
 
-    queryLikes(post_uris, cb) {
+    queryLikes(queries, post_uris, cb) {
       var query = "SELECT post_uri, COUNT(*) AS likes FROM post_like WHERE ? GROUP BY post_uri";
-      Page.cmd("dbQuery", [query, { post_uri: post_uris }], cb);
+      queries.run([query, { post_uri: post_uris }], cb);
     }
 
     // Cheap fingerprint of everything the rendered rows depend on: skip the
@@ -97,6 +97,17 @@
 
     update() {
       this.need_update = false;
+      if (this.query_rows) this.query_rows.cancel();
+      this.query_failed = false;
+      const queries = this.query_rows = new QueryRows(() => {
+        this.query_failed = true;
+        if (!this.loaded && !Page.on_loaded.resolved) {
+          Page.setLoadingProgress(75, _("Could not load the feed. Retry loading."));
+          const retry = document.getElementById("loading-retry");
+          if (retry) retry.hidden = false;
+        }
+        Page.projector.scheduleRender();
+      });
       var param = {};
       var where;
       if (this.directories === "all") {
@@ -108,16 +119,24 @@
         where += "AND post_id IN " + Text.sqlIn(this.filter_post_ids) + " ";
       }
       var feed_hub = this.getFeedHub();
+      const scope = JSON.stringify([this.directories, this.filter_post_ids, feed_hub]);
+      if (scope !== this.content_scope) {
+        this.content_scope = scope;
+        this.item_list.sync([]);
+        this.content_key = null;
+        this.loaded = false;
+        this.has_more = false;
+      }
       if (feed_hub) {
         where += "AND json.site = :feed_hub ";
         param.feed_hub = feed_hub;
       }
       var query = "SELECT * FROM post LEFT JOIN json ON (post.json_id = json.json_id) " + where + " ORDER BY date_added DESC LIMIT " + (this.limit + 1);
       this.logStart("Update");
-      Page.cmd("dbQuery", [query, param], (rows) => {
+      queries.run([query, param], (rows) => {
         // A post served by several hubs renders once per hub on purpose:
         // hubs are separate communities (each row's key includes the site).
-        this.has_more = rows.length > this.limit;
+        const has_more = rows.length > this.limit;
         var post_uris = [];
         var all_addresses = [];
         for (var j = 0; j < rows.length; j++) {
@@ -130,7 +149,7 @@
         }
         var p_comments = new Deferred();
         var p_likes = new Deferred();
-        this.queryComments(post_uris, (comment_rows) => {
+        this.queryComments(queries, post_uris, (comment_rows) => {
           var comment_db = {};
           var comment_uris = [];
           for (var k = 0; k < comment_rows.length; k++) {
@@ -144,7 +163,7 @@
           }
           // Counts come in one query for every comment on the page, not one
           // per comment, so a busy thread is still a single round trip.
-          this.queryCommentLikes(comment_uris, (like_rows) => {
+          this.queryCommentLikes(queries, comment_uris, (like_rows) => {
             var clike_db = {};
             for (var m = 0; m < like_rows.length; m++) {
               clike_db[like_rows[m]["comment_uri"]] = like_rows[m]["likes"];
@@ -165,7 +184,7 @@
             p_comments.resolve();
           });
         });
-        this.queryLikes(post_uris, (like_rows) => {
+        this.queryLikes(queries, post_uris, (like_rows) => {
           var like_db = {};
           for (var k = 0; k < like_rows.length; k++) {
             like_db[like_rows[k]["post_uri"]] = like_rows[k]["likes"];
@@ -178,11 +197,18 @@
         Deferred.join(p_comments, p_likes).then(() => {
           var content_key = this.getContentKey(rows);
           if (this.loaded && content_key === this.content_key) {
+            if (this.has_more !== has_more) {
+              this.has_more = has_more;
+              Page.projector.scheduleRender();
+              if (has_more) this.addScrollwatcher();
+            }
             this.logEnd("Update (unchanged)");
             return;
           }
-          this.content_key = content_key;
           Page.resolveXidProfiles(all_addresses, () => {
+            if (queries.cancelled) return;
+            this.content_key = content_key;
+            this.has_more = has_more;
             this.item_list.sync(rows);
             this.loaded = true;
             this.logEnd("Update");
@@ -191,6 +217,12 @@
           });
         });
       });
+    }
+
+    handleRetryClick() {
+      this.update();
+      Page.projector.scheduleRender();
+      return false;
     }
 
     handleMoreClick() {
@@ -224,7 +256,12 @@
       this.item_list.thread_mode = this.thread_mode;
       this.item_list.focus_uri = this.focus_uri;
       if (this.need_update) this.update();
+      const error = this.query_failed ? h("div.error", [
+        _("Could not update the feed. "),
+        h("a.link", { href: "#Retry", onclick: this.handleRetryClick }, _("Retry"))
+      ]) : null;
       if (!this.posts.length) {
+        if (error) return error;
         if (!this.loaded || this.hide_empty) {
           return null;
         } else {
@@ -236,6 +273,7 @@
         }
       }
       return [
+        error,
         h("div.post-list", this.posts.slice(0, this.limit + 1).map((post) => {
           try { return post.render(); } catch (err) {
             Debug.formatException(err);

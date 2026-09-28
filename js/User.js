@@ -372,21 +372,26 @@
     // cb fires once the file is written (the node has it, still unsigned);
     // cb_published once the sign + publish round-trip is over, with the
     // sitePublish result ("ok", or {error}).
-    save(data, site, cb, cb_published) {
+    save(data, site, cb, cb_published, isCurrent) {
       if (site == null) {
         site = this.hub;
       }
       if (cb == null) {
         cb = null;
       }
-      return Page.cmd("fileWrite", [this.getPath(site) + "/data.json", Text.fileEncode(data)], (res_write) => {
+      if (isCurrent && !isCurrent()) return;
+      var inner_path = this.getPath(site) + "/data.json";
+      return Page.cmd("fileWrite", [inner_path, Text.fileEncode(data)], (res_write) => {
+        if (isCurrent && !isCurrent()) return;
         Page.content.update();
         if (typeof cb === "function") {
           cb(res_write);
         }
+        if (isCurrent && !isCurrent()) return;
         return Page.cmd("sitePublish", {
-          "inner_path": this.getPath(site) + "/data.json"
+          "inner_path": inner_path
         }, (res_sign) => {
+          if (isCurrent && !isCurrent()) return;
           this.log("Save result", res_write, res_sign);
           if (typeof cb_published === "function") {
             cb_published(res_sign);
@@ -636,13 +641,16 @@
     // strips data.json.comment[] - that last-writer-wins write could clobber
     // comments from a device whose data has not synced here yet. Runs in the
     // background on load; converges as data syncs.
-    migrateComments(cb) {
+    migrateComments(cb, isCurrent) {
       if (cb == null) cb = null;
+      if (isCurrent && !isCurrent()) return;
       var done = () => { if (cb) cb(); };
       return this.getData(this.hub, (data) => {
+        if (isCurrent && !isCurrent()) return;
         var legacy = (data && data.comment) || [];
         if (!legacy.length) return done();
         return this.getComments(this.hub, (container) => {
+          if (isCurrent && !isCurrent()) return;
           var have = {};
           container.post.forEach((r) => { have[r.comment_id] = true; });
           var todo = legacy.filter((c) => !have[c.comment_id]);
@@ -650,11 +658,13 @@
           var signed = [];
           var i = 0;
           var signNext = () => {
+            if (isCurrent && !isCurrent()) return;
             if (i >= todo.length) {
               if (!signed.length) return done();
               // One union-write + one publish for the whole batch.
               var merged = { "record_format": "epix-orset-1", "post": signed };
               return Page.cmd("fileWrite", [this.getPath(this.hub) + "/comments.json", Text.fileEncode(merged)], () => {
+                if (isCurrent && !isCurrent()) return;
                 Page.content.update();
                 return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, () => done());
               });
@@ -672,6 +682,7 @@
             };
             if (c.reply_to != null) record["reply_to"] = c.reply_to;
             return Page.cmd("recordSign", [record], (s) => {
+              if (isCurrent && !isCurrent()) return;
               if (s && !s.error) signed.push(s);
               return signNext();
             });
@@ -766,13 +777,16 @@
     // posts.json (keeping their legacy post_id for URL/edit continuity), and
     // NEVER strips data.json.post[] (that LWW write could clobber posts not yet
     // synced). Runs in the background on load; converges as data syncs.
-    migratePosts(cb) {
+    migratePosts(cb, isCurrent) {
       if (cb == null) cb = null;
+      if (isCurrent && !isCurrent()) return;
       var done = () => { if (cb) cb(); };
       return this.getData(this.hub, (data) => {
+        if (isCurrent && !isCurrent()) return;
         var legacy = (data && data.post) || [];
         if (!legacy.length) return done();
         return this.getPosts(this.hub, (container) => {
+          if (isCurrent && !isCurrent()) return;
           var have = {};
           container.post.forEach((r) => { have[r.post_id] = true; });
           var todo = legacy.filter((p) => !have[p.post_id]);
@@ -780,11 +794,13 @@
           var signed = [];
           var i = 0;
           var signNext = () => {
+            if (isCurrent && !isCurrent()) return;
             if (i >= todo.length) {
               // One union-write + one publish for the whole batch.
               var merged = { "record_format": "epix-orset-1", "post": signed };
               if (!signed.length) return done();
               return Page.cmd("fileWrite", [this.getPath(this.hub) + "/posts.json", Text.fileEncode(merged)], () => {
+                if (isCurrent && !isCurrent()) return;
                 Page.content.update();
                 return Page.cmd("sitePublish", { "inner_path": this.getPath(this.hub) + "/content.json" }, () => done());
               });
@@ -801,6 +817,7 @@
             };
             if (p.meta != null) record["meta"] = p.meta;
             return Page.cmd("recordSign", [record], (s) => {
+              if (isCurrent && !isCurrent()) return;
               if (s && !s.error) signed.push(s);
               return signNext();
             });

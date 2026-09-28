@@ -2,6 +2,7 @@
 
   class ActivityList {
     constructor() {
+      this.handleRetryClick = this.handleRetryClick.bind(this);
       this.handleMoreClick = this.handleMoreClick.bind(this);
       this.renderActivity = this.renderActivity.bind(this);
       this.render = this.render.bind(this);
@@ -18,6 +19,9 @@
       this.update_timer = null;
       this.noanim = false;
       this.content_key = null;
+      this.content_scope = null;
+      this.query_rows = null;
+      this.query_failed = false;
     }
 
     // Fingerprint of the grouped rows: background refreshes that return the
@@ -55,6 +59,12 @@
     }
 
     queryActivities(cb) {
+      if (this.query_rows) this.query_rows.cancel();
+      this.query_failed = false;
+      const queries = this.query_rows = new QueryRows(() => {
+        this.query_failed = true;
+        Page.projector.scheduleRender();
+      });
       var where;
       if (this.directories === "all") {
         where = "WHERE date_added > " + (Time.timestamp() - 60 * 60 * 24 * 2) + " AND date_added < " + (Time.timestamp() + 120) + " ";
@@ -62,6 +72,13 @@
         where = "WHERE json.directory IN " + Text.sqlIn(this.directories) + " AND date_added < " + (Time.timestamp() + 120) + " ";
       }
       var feed_hub = this.getFeedHub();
+      const scope = JSON.stringify([this.directories, feed_hub]);
+      if (scope !== this.content_scope) {
+        this.content_scope = scope;
+        this.activities = null;
+        this.content_key = null;
+        this.found = 0;
+      }
       if (feed_hub) {
         where += "AND json.site = :feed_hub ";
       }
@@ -75,7 +92,7 @@
         params.feed_hub = feed_hub;
       }
       this.logStart("Update");
-      Page.cmd("dbQuery", [query, params], (rows) => {
+      queries.run([query, params], (rows) => {
         var directories = [];
         rows = rows.filter(function(row) { return row.subject; });
         var all_addresses = [];
@@ -90,7 +107,7 @@
           if (row.auth_address) all_addresses.push(row.auth_address);
           if (subject_address) all_addresses.push(subject_address);
         }
-        Page.cmd("dbQuery", ["SELECT * FROM json WHERE ?", { directory: directories }], (subject_rows) => {
+        queries.run(["SELECT * FROM json WHERE ?", { directory: directories }], (subject_rows) => {
           var subject_db = {};
           for (var j = 0; j < subject_rows.length; j++) {
             var subject_row = subject_rows[j];
@@ -119,11 +136,19 @@
             last_row = row;
           }
           if (row_group.length) row_groups.push(row_group);
-          this.found = rows.length;
-          this.logEnd("Update");
-          Page.resolveXidProfiles(all_addresses, function() { cb(row_groups); });
+          Page.resolveXidProfiles(all_addresses, () => {
+            if (queries.cancelled) return;
+            this.found = rows.length;
+            this.logEnd("Update");
+            cb(row_groups);
+          });
         });
       });
+    }
+
+    handleRetryClick() {
+      this.update(0);
+      return false;
     }
 
     handleMoreClick() {
@@ -236,8 +261,13 @@
           Page.projector.scheduleRender();
         });
       }
-      if (this.activities === null) return null;
+      const error = this.query_failed ? h("div.error", [
+        _("Could not update activity. "),
+        h("a.link", { href: "#Retry", onclick: this.handleRetryClick }, _("Retry"))
+      ]) : null;
+      if (this.activities === null) return error;
       return h("div.activity-list", [
+        error,
         this.activities.length > 0 ? h("h2", {
           enterAnimation: Animation.slideDown,
           exitAnimation: Animation.slideUp
@@ -255,6 +285,7 @@
 
     update(delay) {
       if (delay == null) delay = 600;
+      if (this.query_rows) this.query_rows.cancel();
       clearInterval(this.update_timer);
       if (!this.need_update) {
         this.update_timer = setTimeout(() => {
