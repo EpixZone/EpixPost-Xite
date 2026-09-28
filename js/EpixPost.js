@@ -51,6 +51,7 @@
       // and dropping the bar in one of those gaps showed an empty feed that
       // looked finished. This cap only guards against a lost signal.
       this.HUB_SYNC_MAX = 900000;
+      this.hub_adds = new Map();
       this.hub_sync = null;
       this.hub_sync_timer = null;
       this.site_info = null;
@@ -389,8 +390,7 @@
               for (var address in default_hubs) {
                 if (!this.merged_sites[address] && !removed_hubs[address] && !this.hubAddInFlight(address)) {
                   this.log("Auto-adding default hub", address);
-                  this.beginHubSync(address);
-                  this.cmd("mergerSiteAdd", address);
+                  this.cmd("mergerSiteAdd", address, () => {});
                 }
               }
             });
@@ -444,25 +444,102 @@
       });
     }
 
+    // Every hub entry point uses cmd, including thread downloads and profile
+    // creation. Share each add until the node finishes it: each repeated
+    // command otherwise produces its own node-generated failure notification.
+    cmd(command, params, cb) {
+      if (typeof params === "function") {
+        cb = params;
+        params = undefined;
+      }
+      if (command === "mergerSiteDelete") {
+        var removed = typeof params === "string" ? params : Array.isArray(params) ? params[0] : params && params.address;
+        this.hub_adds.delete(removed);
+      }
+      if (command !== "mergerSiteAdd") {
+        return super.cmd(command, params, cb);
+      }
+      if (typeof cb !== "function") {
+        return new Promise((resolve, reject) => {
+          this.cmd(command, params, (result) => {
+            if (result && result.error) reject(result);
+            else resolve(result);
+          });
+        });
+      }
+      var addresses;
+      if (typeof params === "string") {
+        addresses = [params];
+      } else if (Array.isArray(params)) {
+        addresses = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+      } else {
+        addresses = params && (params.addresses || (params.address ? [params.address] : null));
+      }
+      if (!Array.isArray(addresses) || !addresses.length || addresses.some((address) => typeof address !== "string" || !/^epix1[a-z0-9]+$/.test(address))) {
+        cb({ error: _("Invalid hub address") });
+        return;
+      }
+      addresses = Array.from(new Set(addresses));
+      this.hub_adds.forEach((entry, address) => {
+        if (Date.now() >= entry.until) this.hub_adds.delete(address);
+      });
+      var fresh = [];
+      var entries = addresses.map((address) => {
+        if (this.hubAddInFlight(address)) return this.hub_adds.get(address);
+        var entry = { address: address, until: Date.now() + this.HUB_SYNC_MAX, callbacks: [], answered: false };
+        this.hub_adds.set(address, entry);
+        fresh.push(entry);
+        return entry;
+      });
+      var remaining = entries.length;
+      var results = [];
+      entries.forEach((entry, index) => {
+        var done = (result) => {
+          results[index] = result;
+          remaining -= 1;
+          if (!remaining) cb(results.find((value) => value && value.error) || results[0]);
+        };
+        if (entry.answered) done(entry.result);
+        else entry.callbacks.push(done);
+      });
+      if (!fresh.length) return;
+      fresh.forEach((entry) => this.beginHubSync(entry.address));
+      var targets = fresh.map((entry) => entry.address);
+      return super.cmd(command, targets.length === 1 ? targets[0] : [targets], (result) => {
+        fresh.forEach((entry) => {
+          entry.answered = true;
+          entry.result = result;
+          if (result && result.error && this.hub_adds.get(entry.address) === entry) {
+            this.endHubSync(entry.address, false);
+          }
+          entry.callbacks.splice(0).forEach((done) => {
+            try {
+              done(result);
+            } catch (error) {
+              // A failed consumer must not prevent the other callers from
+              // receiving the response they are waiting for.
+              console.error("Hub add callback failed", error);
+            }
+          });
+        });
+      });
+    }
+
     needSite(address, cb) {
       this.setHubRemoved(address, false);
       if (this.merged_sites[address]) {
         if (typeof cb === "function") cb(true);
-      } else if (this.hubAddInFlight(address)) {
-        if (typeof cb === "function") cb(true);
       } else {
-        this.beginHubSync(address);
-        Page.cmd("mergerSiteAdd", address, cb);
+        this.cmd("mergerSiteAdd", address, typeof cb === "function" ? cb : () => {});
       }
     }
 
-    // An add we already asked the node for and that has not finished (the
-    // node signals site_done, see endHubSync). Every hub file that landed
-    // meanwhile re-ran updateSiteInfo, the hub was not listed yet, and each
-    // run asked the node to add it again: one "Added 1 new xite" per file.
+    // Keep independent state for every hub, separate from the single visible
+    // progress banner. A short cooldown after completion also prevents the
+    // completion refresh from immediately retrying a failed download.
     hubAddInFlight(address) {
-      var sync = this.hub_sync;
-      return !!(sync && sync.address === address && sync.adding && Date.now() - sync.started < this.HUB_SYNC_MAX);
+      var entry = this.hub_adds.get(address);
+      return !!(entry && Date.now() < entry.until);
     }
 
     // Remember (or forget) that the user explicitly removed a hub, so
@@ -932,21 +1009,29 @@
     // The node reported the add for `address` finished: drop the bar and
     // re-read the feed, since the records only reach the merger's db when the
     // node rebuilds it at the end of the add.
-    endHubSync(address) {
+    endHubSync(address, refresh = true) {
+      var entry = this.hub_adds.get(address);
+      if (entry) entry.until = Date.now() + 30000;
       var sync = this.hub_sync;
-      if (!sync || sync.address !== address) {
-        return;
-      }
-      this.hub_sync = null;
-      if (this.hub_sync_timer) {
-        clearTimeout(this.hub_sync_timer);
-        this.hub_sync_timer = null;
-      }
-      this.updateSiteInfo(() => {
-        if (this.content) {
-          this.content.update();
+      var visible = sync && sync.address === address;
+      if (!entry && !visible) return;
+      if (visible) {
+        this.hub_sync = null;
+        if (this.hub_sync_timer) {
+          clearTimeout(this.hub_sync_timer);
+          this.hub_sync_timer = null;
         }
-      });
+        this.projector.scheduleRender();
+      }
+      // A different hub may own the banner, but this hub's newly indexed
+      // records still need to reach the feed.
+      if (refresh) {
+        this.updateSiteInfo(() => {
+          if (this.content) {
+            this.content.update();
+          }
+        });
+      }
     }
 
     // Whether a hub download is still live. While the node is adding the hub
