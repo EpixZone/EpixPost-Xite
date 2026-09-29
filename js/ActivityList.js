@@ -244,8 +244,9 @@
         key: activity.cert_user_id + "_" + activity.date_added + "_" + activity_group.length,
         title: title,
         classes: { latest: now - activity.date_added < 600 },
-        enterAnimation: this.noanim ? void 0 : Animation.slideDown,
-        exitAnimation: this.noanim ? void 0 : Animation.slideUp
+        animate_noanim: this.noanim,
+        enterAnimation: Animation.slideDown,
+        exitAnimation: Animation.slideUp
       }, [
         h("div.activity-icon." + icon),
         h("div.body", body),
