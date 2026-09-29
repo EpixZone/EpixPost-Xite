@@ -2,6 +2,9 @@
 
   class Animation {
     slideDown(elem, props) {
+      // Keep Maquette's animation callbacks stable across refreshes. Changing
+      // a callback from undefined to a function stops the entire projector.
+      if (props.animate_noanim) return;
       var h = elem.offsetHeight;
       var cstyle = window.getComputedStyle(elem);
       var margin_top = cstyle.marginTop;
@@ -92,6 +95,10 @@
     }
 
     slideUp(elem, remove_func, props) {
+      if (props.animate_noanim) {
+        remove_func();
+        return;
+      }
       if (window.Animation.shouldScrollFix(elem, props) && elem.nextSibling) {
         var top_after = document.body.scrollHeight;
         var next_elem = elem.nextSibling;

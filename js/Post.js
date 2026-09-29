@@ -684,8 +684,9 @@
         id: uri,
         key: uri,
         animate_scrollfix: true,
-        enterAnimation: noanim ? void 0 : Animation.slideDown,
-        exitAnimation: noanim ? void 0 : Animation.slideUp,
+        animate_noanim: noanim,
+        enterAnimation: Animation.slideDown,
+        exitAnimation: Animation.slideUp,
         classes: {
           focused: !!opts.focused,
           nested: !!opts.nested,
@@ -738,7 +739,8 @@
           onclick: Page.handleLinkClick
         }, reply_count === 1 ? _("1 reply") : reply_count + " " + _("replies")) : void 0,
         state.open ? h("div.comment-create.reply-create", {
-          enterAnimation: noanim ? void 0 : Animation.slideDown
+          animate_noanim: noanim,
+          enterAnimation: Animation.slideDown
         }, [
           h("div.replying-to", [_("Replying to"), " ", h("span.reply-name", "@" + display_name)]),
           state.field.render()
@@ -766,7 +768,8 @@
       return h("div.comment.pending", {
         key: "pending_" + pending.uri,
         animate_scrollfix: true,
-        enterAnimation: noanim ? void 0 : Animation.slideDown,
+        animate_noanim: noanim,
+        enterAnimation: Animation.slideDown,
         classes: {
           nested: !!opts.nested
         }
@@ -836,13 +839,15 @@
         return [];
       }
       return h("div.comment-list", {
-        enterAnimation: noanim ? void 0 : Animation.slideDown,
-        exitAnimation: noanim ? void 0 : Animation.slideUp,
+        animate_noanim: noanim,
+        enterAnimation: Animation.slideDown,
+        exitAnimation: Animation.slideUp,
         animate_scrollfix: true,
         animate_noscale: true
       }, [
         this.commenting ? h("div.comment-create", {
-          enterAnimation: noanim ? void 0 : Animation.slideDown
+          animate_noanim: noanim,
+          enterAnimation: Animation.slideDown
         }, this.field_comment.render()) : void 0,
         // Newest first here, so ours sits on top while it is pending
         pending_top.slice().reverse().map((pending) => {
@@ -854,8 +859,9 @@
         top_desc.length > this.comment_limit ? h("a.more", {
           href: "#More",
           onclick: this.handleMoreCommentsClick,
-          enterAnimation: noanim ? void 0 : Animation.slideDown,
-          exitAnimation: noanim ? void 0 : Animation.slideUp
+          animate_noanim: noanim,
+          enterAnimation: Animation.slideDown,
+          exitAnimation: Animation.slideUp
         }, _("Show more comments...")) : void 0
       ]);
     }
@@ -1049,8 +1055,9 @@
       this.field_comment.attrs.title_submit = _("Reply");
       return h("div.post", {
         key: this.row.key,
-        enterAnimation: noanim ? void 0 : Animation.slideDown,
-        exitAnimation: noanim ? void 0 : Animation.slideUp,
+        animate_noanim: noanim,
+        enterAnimation: Animation.slideDown,
+        exitAnimation: Animation.slideUp,
         animate_scrollfix: true,
         classes: {
           selected: this.row.selected,
