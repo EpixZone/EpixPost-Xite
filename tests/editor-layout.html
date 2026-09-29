@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor layout regression checks</title>
+<link rel="stylesheet" href="../css/all.css">
+<style>
+  #checks, #fixture { width: min(600px, calc(100% - 32px)); margin: 16px auto; }
+  #checks h1 { font-size: 20px; }
+  #results { white-space: pre-wrap; }
+</style>
+<body class="loaded">
+<section id="checks">
+  <h1>Editor layout checks</h1>
+  <p>Runs automatically. Open this file directly or serve the repository locally.
+    Test at desktop and mobile widths, including Firefox 140 ESR.</p>
+  <strong id="status">RUNNING</strong>
+</section>
+<div id="fixture"></div>
+<pre id="results"></pre>
+<script src="../js/lib/maquette.js"></script>
+<script src="../js/lib/clone.js"></script>
+<script src="../js/lib/marked.min.js"></script>
+<script src="../js/utils/LogMixin.js"></script>
+<script src="../js/utils/Translate.js"></script>
+<script src="../js/utils/Time.js"></script>
+<script src="../js/utils/Text.js"></script>
+<script src="../js/utils/Animation.js"></script>
+<script src="../js/utils/RateLimit.js"></script>
+<script src="../js/utils/Autosize.js"></script>
+<script src="../js/utils/Editable.js"></script>
+<script src="../js/utils/Menu.js"></script>
+<script src="../js/utils/ImagePreview.js"></script>
+<script src="../js/utils/Uploadable.js"></script>
+<script src="../js/Post.js"></script>
+<script src="../js/ComposerModal.js"></script>
+<script>
+// Real rendering and layout; only account metadata and bridge calls are local.
+window.h = maquette.h;
+window.User = class {
+  constructor(row) { Object.assign(this, row); }
+  getLink() { return "#Alice"; }
+  getDisplayName() { return "Alice"; }
+  renderAvatar() { return h("div.avatar.letter", "A"); }
+};
+window.Page = {
+  projector: maquette.createProjector(), user_hubs: { hub: {} }, local_storage: { settings: {} },
+  user: { auth_address: "alice", hub: "hub", likes: {}, comment_likes: {},
+    renderAvatar: () => h("div.avatar.letter", "A"),
+    editPost(id, changes, cb) { Object.assign(posts[id - 1].row, changes); cb(true); } },
+  returnFalse: () => false, handleLinkClick: () => false,
+  cmd(name, params, cb) {
+    if (name === "feedListFollow") cb({});
+    else throw new Error("Unexpected bridge call: " + name);
+  }
+};
+const posts = [1, 2].map(id => new Post({
+  key: "hub-alice_" + id, post_id: id, site: "hub", directory: "data/users/alice",
+  date_added: 1790700000 - id, body: id === 1 ? "Edit this post" : "Adjacent post", comments: []
+}, { noanim: true }));
+Page.composer = new ComposerModal();
+Page.projector.append(document.querySelector("#fixture"), () => h("div", [
+  h("button", { onclick: Page.composer.open }, "New post"), posts.map(post => post.render()),
+  Page.composer.render()
+]));
+
+window.layoutResults = [];
+document.documentElement.dataset.testStatus = "running";
+const wait = (ms = 350) => new Promise(resolve => setTimeout(resolve, ms));
+function check(name, ok, detail = "") {
+  layoutResults.push({ name, passed: !!ok, detail });
+}
+function click(node) {
+  if (!node) throw new Error("Missing test control");
+  node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+  node.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+  node.click();
+}
+async function openMenu() {
+  click(document.querySelector(".post .settings"));
+  await wait();
+  return document.querySelector(".post .menu.visible");
+}
+async function run() {
+  await wait();
+  const menu = await openMenu();
+  const menuBox = menu.getBoundingClientRect();
+  const nextBox = document.querySelectorAll(".post")[1].getBoundingClientRect();
+  const top = Math.max(menuBox.top, nextBox.top);
+  const bottom = Math.min(menuBox.bottom, nextBox.bottom, innerHeight);
+  const point = document.elementFromPoint(menuBox.right - 20, (top + bottom) / 2);
+  check("Open menu paints above the adjacent card", bottom > top && menu.contains(point));
+  click(document.querySelector(".post .settings"));
+  posts[0].row.body = "First line\nSecond line\nThird line\nFourth line\nFifth line";
+  Page.projector.scheduleRender();
+  await wait();
+
+  for (const action of ["Save", "Cancel"]) {
+    const menu = await openMenu();
+    click(Array.from(menu.querySelectorAll("a")).find(node => node.textContent === "Edit"));
+    await wait();
+    const field = posts[0].editable_body.field_edit.node;
+    check(action + ": multiline editor fits before typing", field.clientHeight >= field.scrollHeight,
+      "clientHeight=" + field.clientHeight + ", scrollHeight=" + field.scrollHeight);
+    field.value += "\nOne more line";
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait();
+    check(action + ": editor grows after typing", field.clientHeight >= field.scrollHeight);
+    click(field.parentNode.querySelector('a[href="#' + action + '"]'));
+    await wait(750);
+    click(document.querySelector("#fixture button"));
+    await wait();
+    const composer = Page.composer.field_post.node;
+    composer.value = "A new post";
+    composer.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait();
+    const card = document.querySelector(".post").getBoundingClientRect();
+    const hit = document.elementFromPoint(card.left + 10, Math.max(1, Math.min(card.top + 10, innerHeight - 1)));
+    check(action + ": composer covers the previously edited post", !!hit && !!hit.closest(".composer-scrim"));
+    click(document.querySelector(".composer-close"));
+    await wait();
+  }
+}
+run().catch(error => check("Fixture completed without errors", false, error.stack || String(error))).finally(() => {
+  if (Page.composer.visible) Page.composer.close();
+  const passed = layoutResults.every(result => result.passed);
+  document.querySelector("#status").textContent = passed ? "PASS" : "FAIL";
+  document.querySelector("#results").textContent = layoutResults.map(result =>
+    (result.passed ? "PASS: " : "FAIL: ") + result.name + (result.detail ? " (" + result.detail + ")" : "")
+  ).join("\n");
+  document.documentElement.dataset.testStatus = passed ? "passed" : "failed";
+});
+</script>
+</body>
+</html>

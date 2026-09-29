@@ -47,7 +47,6 @@
       this.comment_limit = 3;
       this.menu = null;
       this.meta = null;
-      this.css_style = "";
       this.setRow(row);
     }
 
@@ -578,7 +577,6 @@
     }
 
     handleSettingsClick() {
-      this.css_style = "z-index: " + this.row.date_added + "; position: relative";
       Page.cmd("feedListFollow", [], (follows) => {
         var followed, ref;
         if (!this.menu) {
@@ -1063,7 +1061,9 @@
           selected: this.row.selected,
           thread: thread_mode
         },
-        style: this.css_style
+        // Keep an open menu above adjacent cards, but below modal overlays.
+        // Closing the menu restores the card's normal stacking order.
+        style: this.menu && this.menu.visible ? "z-index: 1; position: relative" : ""
       }, [
         this.renderHeader(),
         this.owned ? this.editable_body.render(this.row.body) : h("div.body", {

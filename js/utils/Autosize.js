@@ -61,6 +61,9 @@
       });
       measure.value = node.value;
       node.parentNode.appendChild(measure);
+      // Firefox 140 ESR reports only padding until the new copy is laid out.
+      // Flush its layout before reading the text's scroll height.
+      measure.getBoundingClientRect();
       var height = measure.scrollHeight;
       if (style.boxSizing === "border-box") {
         height += parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);

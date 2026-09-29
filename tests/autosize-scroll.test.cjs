@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, "../js/utils/Autosize.js"), 
 
 // Model the browser's scroll-range clamp when layout reads a collapsed editor.
 // The same behavior is checked with the real script and CSS in Chromium.
-function fixture({ boxSizing = "border-box", contentHeight = 600 } = {}) {
+function fixture({ boxSizing = "border-box", contentHeight = 600, requiresLayout = false } = {}) {
   const pending = [];
   const view = { scrollTop: 1000 };
   const parent = { children: [], appendChild(node) { this.children.push(node); } };
@@ -18,10 +18,13 @@ function fixture({ boxSizing = "border-box", contentHeight = 600 } = {}) {
     isConnected: true, style: { height: "600px" }, value: "A long post", parentNode: parent,
     scrollTop: 20, selectionStart: 9, selectionEnd: 9,
     cloneNode() {
+      let laidOut = !requiresLayout;
       const copy = { style: {}, value: this.value, attributes: { id: "editor", name: "post" },
         removeAttribute(name) { delete this.attributes[name]; },
         setAttribute(name, value) { this.attributes[name] = value; },
-        get scrollHeight() { return contentHeight; },
+        getBoundingClientRect() { laidOut = true; return { height: 20 }; },
+        // Firefox 140 ESR initially reports only padding for a new clone.
+        get scrollHeight() { return laidOut ? contentHeight : 20; },
         remove() { parent.children.splice(parent.children.indexOf(this), 1); } };
       return copy;
     },
@@ -63,6 +66,15 @@ test("border-box editors include both borders when expanding to fit the text", (
   f.field.autoHeight();
   assert.equal(f.node.style.height, "722px");
   assert.equal(f.parent.children.length, 0);
+});
+
+test("multiline editors measure the clone's text after Firefox ESR lays it out", () => {
+  const f = fixture({ contentHeight: 133, requiresLayout: true });
+  f.node.value = "First line\nSecond line\nThird line\nFourth line\nFifth line";
+  f.field.autoHeight();
+  assert.equal(f.node.style.height, "135px");
+  assert.equal(f.parent.children.length, 0);
+  assert.equal(f.node.selectionStart, 9);
 });
 
 test("content-box editors exclude padding from their CSS height", () => {
