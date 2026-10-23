@@ -17,10 +17,7 @@
     // Setup state machine:
     //  step 1: "Merger:EpixPost" permission not granted yet
     //  step 2: permission ok, but no certificate selected
-    //  step 3: certificate ok, but no profile on any hub (internal only:
-    //          the xID IS the profile, so this rides step 2 as its
-    //          "Creating your profile..." wait state; non-xID certs get a
-    //          Create profile link instead of a visible step)
+    //  step 3: certificate ok, but no profile on any complete hub
     //  step 4: everything ready, the card renders nothing
     getState() {
       if (!Page.site_info || !Page.site_info.settings) {
@@ -44,29 +41,15 @@
       return state;
     }
 
-    // True when at least one default hub is already merged. When no default
-    // hub is configured there is nothing to wait for, so it counts as ready.
+    // Hub selection is explicit. Partial downloads are not ready to join.
     isHubConnected() {
-      var ref = Page.site_info.content;
-      var default_hubs = (ref != null ? (ref.settings != null ? ref.settings.default_hubs : void 0) : void 0) || {};
-      var has_default = false;
-      for (var address in default_hubs) {
-        has_default = true;
-        if (Page.merged_sites[address]) {
-          return true;
-        }
-      }
-      return !has_default;
+      return Object.values(Page.merged_sites || {}).some((site) => Page.isHubReady(site));
     }
 
     // Background work the user only has to wait for; shown as a spinner row.
     getStatus(state) {
       if (state.perm && !state.hub_connected) {
-        return _("Connecting to Epix Post Hub...");
-      }
-      if (state.step === 3 && state.cert_is_xid) {
-        // checkUser() -> autoCreateXidProfile() is creating the profile
-        return _("Creating your profile...");
+        return Page.hubSyncActive() ? _("Downloading your selected hub...") : null;
       }
       return null;
     }
@@ -82,9 +65,11 @@
         // Same request the boot prompt makes - this is the way back for a
         // visitor who dismissed that dialog.
         Page.requestMergerPermission();
+      } else if (!state.hub_connected) {
+        Page.setUrl("?Hubs");
       } else if (!state.cert) {
         Page.cmd("certXid", {});
-      } else if (!state.profile && !state.cert_is_xid) {
+      } else if (!state.profile) {
         Page.setUrl("?Create+profile");
       }
       return false;
@@ -115,7 +100,7 @@
         return null;
       }
       var status = this.getStatus(state);
-      var show_cta = !(state.step === 3 && state.cert_is_xid);
+      var show_cta = state.step !== 4;
       return h("div.onboarding", [
         h("div.onboarding-head", [
           h("img.onboarding-logo", {src: "img/logo.svg", alt: ""}),
@@ -126,11 +111,10 @@
           _("Your posts live on hubs: shared sites that you and other users seed together.")
         ]),
         h("div.onboarding-steps", [
-          // Two visible steps: the xID is the profile, so the internal
-          // profile-creation step shows as step 2's wait spinner, not as a
-          // step of its own.
+          // Hub selection happens before any hub content is requested.
           this.renderStep(1, _("Enable data merging"), state.perm, !state.perm),
-          this.renderStep(2, _("Choose your xID"), state.step === 4, state.perm)
+          this.renderStep(2, _("Choose a hub"), state.hub_connected, state.perm && !state.hub_connected),
+          this.renderStep(3, _("Choose your xID"), state.step === 4, state.perm && state.hub_connected)
         ]),
         status ? h("div.onboarding-status", [
           h("span.spinner"),
@@ -141,7 +125,7 @@
             key: "cta",
             href: "#Get+started",
             onclick: this.handleCtaClick
-          }, _("Get started")) : void 0,
+          }, state.perm && !state.hub_connected ? _("Choose a hub") : (state.cert && !state.profile ? _("Create profile") : _("Get started"))) : void 0,
           state.step === 3 && !state.cert_is_xid ? h("a.link.onboarding-link", {
             key: "create-profile",
             href: "?Create+profile",

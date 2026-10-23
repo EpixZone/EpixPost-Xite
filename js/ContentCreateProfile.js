@@ -20,11 +20,7 @@
     }
 
     handleDownloadClick(e) {
-      var hub = e.target.attributes.address.value;
-      this.downloading[hub] = true;
-      Page.needSite(hub, () => {
-        return this.update();
-      });
+      Page.content_hubs.handleDownloadClick(e);
       return false;
     }
 
@@ -55,6 +51,10 @@
     }
 
     joinHub(hub) {
+      if (!this.hubs.some((site) => site.address === hub && Page.isHubReady(site))) {
+        Page.setUrl("?Hubs");
+        return false;
+      }
       HubActions.joinHub(hub, ((status) => {
         this.creation_status.push(status);
         Page.projector.scheduleRender();
@@ -69,8 +69,11 @@
     }
 
     updateHubs() {
+      Page.content_hubs.community.load();
       return Page.cmd("mergerSiteList", true, (sites) => {
+        if (!sites || typeof sites !== "object" || Array.isArray(sites) || sites.error) return;
         Page.cmd("dbQuery", "SELECT * FROM json", (users) => {
+          if (!Array.isArray(users)) return;
           var site_users = {};
           for (var i = 0, len = users.length; i < len; i++) {
             var user = users[i];
@@ -82,6 +85,7 @@
           var hubs = [];
           for (var address in sites) {
             var site = sites[address];
+            if (!Page.isHubReady(site)) continue;
             site["users"] = site_users[site.address] || [];
             hubs.push(site);
           }
@@ -146,7 +150,10 @@
     }
 
     renderDefaultHubs() {
-      return h("div.hubs.hubs-default", this.default_hubs.map(this.renderHub));
+      return h("div.hubs.hubs-default", [
+        h("p", _("Review community reports and choose which hubs to download on the Hubs page.")),
+        h("a.button", {href: "?Hubs", onclick: Page.handleLinkClick}, _("Choose a hub"))
+      ]);
     }
 
     handleSelectUserClick() {
@@ -184,10 +191,10 @@
           this.hubs.length ? h("div.hubselect.seeded", {
             enterAnimation: Animation.slideDown,
             exitAnimation: Animation.slideUp
-          }, [h("h2", _("Seeded hubs")), this.renderSeededHubs()]) : void 0, this.default_hubs.length ? h("div.hubselect.default", {
+          }, [h("h2", _("Seeded hubs")), this.renderSeededHubs()]) : void 0, h("div.hubselect.default", {
             enterAnimation: Animation.slideDown,
             exitAnimation: Animation.slideUp
-          }, [h("h2", _("Available hubs")), this.renderDefaultHubs()]) : void 0, h("h5", _("The hub only decides where your profile is stored. You can reach every user from any hub."))
+          }, [h("h2", _("Find a hub")), this.renderDefaultHubs()]), h("h5", _("The hub only decides where your profile is stored. You can reach every user from any hub."))
         ]) : void 0
       ]);
     }
