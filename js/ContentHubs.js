@@ -30,11 +30,12 @@
       this.discover = [];
       this.need_update = true;
       this.loaded = false;
-      this.downloading = {};
+      this.community = new HubCommunityView(this);
+      this.manual_hubs = {};
+      this.refresh_generation = 0;
       this.joining = {};
       this.menus = {};
       this.add_value = "";
-      this.adding = false;
       this.create_visible = false;
       this.create_title = "";
       this.create_description = "";
@@ -82,12 +83,48 @@
 
     handleDownloadClick(e) {
       var hub = e.currentTarget.attributes.address.value;
-      this.downloading[hub] = true;
-      Page.needSite(hub, () => {
+      this.downloadHub(hub);
+      return false;
+    }
+
+    canDownload(address) {
+      return this.community.canDownload(address);
+    }
+
+    downloadHub(address) {
+      if (!this.canDownload(address)) {
+        Page.cmd("wrapperNotification", ["info", _("Review this hub and your filters before downloading.")]);
+        return;
+      }
+      if (!(Page.user && Page.user.hub) && Page.local_storage) {
+        Page.local_storage.settings.hub = address;
+        Page.saveLocalStorage();
+      }
+      Page.retryHubDownload(address, (result) => {
+        if (result && result.error) Page.cmd("wrapperNotification", ["error", result.error]);
         this.update();
       });
       Page.projector.scheduleRender();
-      return false;
+    }
+
+    renderDownload(address) {
+      var download = Page.getHubDownload(address);
+      var busy = download.state === "requesting" || download.state === "downloading";
+      var blocked = !this.canDownload(address);
+      return h("button.button.button-small.button-submit", {
+        type: "button", address: address, onclick: this.handleDownloadClick,
+        disabled: busy || blocked, classes: {loading: busy},
+        title: blocked ? _("Review this hub and your filters before downloading.") : _("Download this hub")
+      }, busy ? _("Downloading...") : (download.state === "unavailable" || download.state === "error" ? _("Retry download") : _("Download")));
+    }
+
+    renderDownloadStatus(address) {
+      var download = Page.getHubDownload(address);
+      if (download.state !== "unavailable" && download.state !== "error") return void 0;
+      return h("p.hub-community-error", {key: "download-status", role: "status"}, [
+        download.message || _("This download did not complete. You can retry or report your observation."),
+        " ", _("This does not prove that the hub has no seeders.")
+      ]);
     }
 
     handleJoinClick(e) {
@@ -190,11 +227,8 @@
     }
 
     handleAddClick() {
-      var address = (this.add_value || "").trim();
-      if (this.adding) {
-        return false;
-      }
-      if (!address.startsWith("epix1") || address.length <= 20) {
+      var address = HubCommunity.normalizeAddress(this.add_value);
+      if (!address) {
         Page.cmd("wrapperNotification", ["error", _("Invalid hub address (should start with epix1)")]);
         return false;
       }
@@ -202,45 +236,12 @@
         Page.cmd("wrapperNotification", ["info", _("You already seed this hub")]);
         return false;
       }
-      // The loading state starts in the callback: mergerSiteAdd prompts the
-      // user first and never calls back if the prompt is dismissed.
-      Page.cmd("mergerSiteAdd", address, (res) => {
-        if (res && res.error) {
-          Page.cmd("wrapperNotification", ["error", res.error]);
-          return;
-        }
-        this.adding = true;
-        Page.projector.scheduleRender();
-        this.checkAdded(address, 0);
-      });
+      // An address is a metadata preview, not consent to fetch its content.
+      this.manual_hubs[address] = {address: address, title: _("Hub preview"), description: _("Review the available community reports before downloading.")};
+      this.add_value = "";
+      this.update();
       return false;
     }
-
-    // Right after mergerSiteAdd the hub's content.json may not be downloaded
-    // yet, so poll mergerSiteList a few times before declaring the site not
-    // an Epix Post hub.
-    checkAdded(address, attempt) {
-      Page.cmd("mergerSiteList", {}, (sites) => {
-        if (sites[address]) {
-          this.adding = false;
-          this.add_value = "";
-          Page.setHubRemoved(address, false);
-          Page.updateSiteInfo(() => {
-            this.update();
-          });
-        } else if (attempt < 5) {
-          setTimeout((() => {
-            this.checkAdded(address, attempt + 1);
-          }), 2000);
-        } else {
-          this.adding = false;
-          Page.cmd("wrapperNotification", ["error", _("Not an Epix Post hub")]);
-          Page.projector.scheduleRender();
-        }
-      });
-    }
-
-    // ---- Create Hub ----
 
     canCreateHub() {
       var ref;
@@ -590,64 +591,52 @@
     }
 
     updateHubs() {
+      var generation = ++this.refresh_generation;
+      this.community.load();
       Page.cmd("mergerSiteList", true, (sites) => {
+        if (generation !== this.refresh_generation) return;
+        if (!sites || typeof sites !== "object" || Array.isArray(sites) || sites.error) {
+          this.hub_error = _("Hub list could not be loaded. Try again.");
+          this.loaded = true;
+          Page.projector.scheduleRender();
+          return;
+        }
+        this.hub_error = null;
         Page.cmd("dbQuery", "SELECT * FROM json WHERE directory LIKE 'data/users/%' AND file_name = 'data.json'", (users) => {
+          if (generation !== this.refresh_generation) return;
           var site_users = {};
-          for (var i = 0, len = users.length; i < len; i++) {
-            var user = users[i];
-            if (site_users[user.hub] == null) {
-              site_users[user.hub] = [];
-            }
-            site_users[user.hub].push(user);
-          }
-          var hubs = [];
-          for (var address in sites) {
-            var site = sites[address];
-            site["users"] = site_users[site.address] || [];
-            site["type"] = "seeded";
-            hubs.push(site);
-          }
-          this.hubs = hubs;
+          (Array.isArray(users) ? users : []).forEach((user) => {
+            if (!site_users[user.site]) site_users[user.site] = [];
+            site_users[user.site].push(user);
+          });
+          this.hubs = Object.keys(sites).map((address) => Object.assign({}, sites[address], {
+            address: address, users: site_users[address] || [], type: "seeded"
+          }));
           this.loaded = true;
           Page.projector.scheduleRender();
         });
         this.default_hubs = [];
-        var ref = ((Page.site_info.content != null ? Page.site_info.content.settings : void 0) || {}).default_hubs || {};
-        for (var address in ref) {
-          var content = ref[address];
-          if (!sites[address] && !this.downloading[address]) {
-            this.default_hubs.push({
-              users: [],
-              address: address,
-              content: content,
-              type: "available"
-            });
-          }
-        }
-        this.updateDiscover(sites);
+        var defaults = ((Page.site_info.content && Page.site_info.content.settings) || {}).default_hubs || {};
+        Object.keys(defaults).forEach((address) => {
+          if (!sites[address]) this.default_hubs.push({users: [], address: address, content: defaults[address], type: "available"});
+        });
+        this.updateDiscover(sites, generation);
         this.checkPendingHub(sites);
       });
     }
 
-    // Hubs announced by users in their data.json (hub_announce rows): newest
-    // announce per address, hubs the node already seeds are left out.
-    updateDiscover(sites) {
+    // Discovery reads only metadata already in the local merger database.
+    updateDiscover(sites, generation) {
       Page.cmd("dbQuery", "SELECT hub_announce.*, json.directory, json.cert_user_id FROM hub_announce LEFT JOIN json USING (json_id) ORDER BY date_added DESC", (rows) => {
+        if (generation !== this.refresh_generation) return;
         var discover = [];
-        var seen = {};
-        if (rows && !rows.error) {
-          for (var i = 0; i < rows.length; i++) {
-            var row = rows[i];
-            if (!row.address || seen[row.address]) {
-              continue;
-            }
-            seen[row.address] = true;
-            if (sites[row.address] || row.address === Page.address) {
-              continue;
-            }
-            discover.push(row);
-          }
-        }
+        var seen = new Set(this.default_hubs.map((hub) => hub.address));
+        (Array.isArray(rows) ? rows : []).concat(Object.values(this.manual_hubs)).forEach((row) => {
+          var address = HubCommunity.normalizeAddress(row.address);
+          if (!address || seen.has(address) || sites[address] || address === Page.address) return;
+          seen.add(address);
+          discover.push(Object.assign({}, row, {address: address}));
+        });
         this.discover = discover;
         Page.projector.scheduleRender();
       });
@@ -657,6 +646,8 @@
       var rendered = 0;
       var address = hub.address;
       var seeded = hub.type === "seeded";
+      var download = Page.getHubDownload(address);
+      var ready = seeded && Page.isHubReady(hub) && download.state !== "unavailable" && download.state !== "error";
       var joined = this.isJoined(address);
       var active = this.isActive(address);
       var menu = this.menus[address];
@@ -666,9 +657,7 @@
       // whose setup never finished (e.g. the page reloaded mid-creation).
       var setup_unfinished = seeded && admin === "" && (hub.settings != null ? hub.settings.own : void 0) && !this.isDefault(address);
       return h("div.hub.card.hub-detail", {
-        key: address + hub.type,
-        enterAnimation: Animation.slideDown,
-        exitAnimation: Animation.slideUp
+        key: address + hub.type
       }, [
         h("div.hub-head", [
           h("div.hub-headmain", [
@@ -684,19 +673,14 @@
             ])
           ]),
           h("div.hub-actions", [
-            !seeded ? h("a.button.button-small.button-submit", {
-              href: "#Download:" + address,
-              address: address,
-              onclick: this.handleDownloadClick,
-              classes: {loading: this.downloading[address]}
-            }, _("Download")) : void 0,
+            !ready ? this.renderDownload(address) : void 0,
             setup_unfinished ? h("a.button.button-small.button-submit", {
               href: "#Finish:" + address,
               address: address,
               onclick: this.handleFinishSetupClick,
               classes: {loading: this.creating}
             }, _("Finish hub setup")) : void 0,
-            seeded && !joined ? h("a.button.button-small", {
+            ready && !joined ? h("a.button.button-small", {
               href: "#Join:" + address,
               address: address,
               onclick: this.handleJoinClick,
@@ -712,6 +696,8 @@
             menu ? menu.render(".menu-right" + (joined ? ".menu-danger" : "")) : void 0
           ])
         ]),
+        this.renderDownloadStatus(address),
+        this.community.renderSummary(address),
         hub.content && hub.content.description ? h("div.intro", hub.content.description) : void 0,
         h("a.hub-address", {
           href: "#Copy:" + address,
@@ -751,9 +737,7 @@
       var admin = this.admin_xids[address];
       var verified = admin != null && admin !== "" && admin === announcer;
       return h("div.hub.card.hub-detail.hub-discover", {
-        key: "discover-" + address,
-        enterAnimation: Animation.slideDown,
-        exitAnimation: Animation.slideUp
+        key: "discover-" + address
       }, [
         h("div.hub-head", [
           h("div.hub-headmain", [
@@ -763,14 +747,11 @@
             ]) : void 0
           ]),
           h("div.hub-actions", [
-            h("a.button.button-small.button-submit", {
-              href: "#Download:" + address,
-              address: address,
-              onclick: this.handleDownloadClick,
-              classes: {loading: this.downloading[address]}
-            }, _("Download"))
+            this.renderDownload(address)
           ])
         ]),
+        this.renderDownloadStatus(address),
+        this.community.renderSummary(address),
         row.description ? h("div.intro", row.description) : void 0,
         h("a.hub-address", {
           href: "#Copy:" + address,
@@ -779,7 +760,7 @@
           onclick: this.handleCopyClick
         }, address.slice(0, 14) + "..." + address.slice(-6)),
         h("div.hub-stats", [
-          h("span.hub-stat", _("Announced by") + " " + Text.formatUsername(announcer) + (verified ? "" : " " + _("(unverified)"))),
+          announcer ? h("span.hub-stat", _("Announced by") + " " + Text.formatUsername(announcer) + (verified ? "" : " " + _("(unverified)"))) : h("span.hub-stat", _("Address preview; publisher not verified")),
           row.date_added ? h("span.hub-stat", Time.since(row.date_added)) : void 0
         ])
       ]);
@@ -843,7 +824,7 @@
 
     renderAddHub() {
       return h("div.hub-add", [
-        h("h2.sep", _("Add hub by address")),
+        h("h2.sep", {key: "preview-title"}, _("Preview hub by address")),
         h("div.hub-add-row", [
           h("input.text", {
             placeholder: _("Hub address (epix1...)"),
@@ -853,9 +834,8 @@
           }),
           h("a.button.button-submit", {
             href: "#Add+hub",
-            onclick: this.handleAddClick,
-            classes: {loading: this.adding}
-          }, _("Add"))
+            onclick: this.handleAddClick
+          }, _("Preview"))
         ])
       ]);
     }
@@ -869,17 +849,25 @@
         this.need_update = false;
         this.updateHubs();
       }
+      var available = this.default_hubs.filter((hub) => this.community.show_filtered || !this.community.reasons(hub.address).length);
+      var discover = this.discover.filter((hub) => this.community.show_filtered || !this.community.reasons(hub.address).length);
+      var filtered = this.default_hubs.concat(this.discover).filter((hub) => this.community.reasons(hub.address).length).length;
       return h("div#Content.center.content-hubs", [
         h("h1", _("Hubs")),
-        h("div.hubs-note", _("Hubs store the user profiles of Epix Post. Seed more hubs to see more people.")),
+        h("div.hubs-note", _("Hubs store profiles and posts. Choose a hub before downloading its content.")),
+        this.community.renderFilters(),
         this.renderCreateHubButton(),
+        this.hub_error ? h("p.hub-community-error", {key: "hub-error", role: "alert"}, [this.hub_error, " ", h("button.button.button-small", {type: "button", onclick: this.update}, _("Retry"))]) : void 0,
+        this.hubs.length ? h("h2.sep", {key: "seeded-title"}, _("Hubs you seed")) : void 0,
         h("div.hubs.hubs-seeded", this.hubs.map(this.renderHub)),
-        this.default_hubs.length ? h("h2.sep", _("Available hubs")) : void 0,
-        h("div.hubs.hubs-default", this.default_hubs.map(this.renderHub)),
-        this.discover.length ? h("h2.sep", _("Discover hubs")) : void 0,
-        this.discover.length ? h("div.hubs.hubs-discover", this.discover.map(this.renderDiscoverHub)) : void 0,
+        this.community.renderFiltered(filtered),
+        available.length ? h("h2.sep", {key: "available-title"}, _("Available hubs")) : void 0,
+        h("div.hubs.hubs-default", available.map(this.renderHub)),
+        discover.length ? h("h2.sep", {key: "discover-title"}, _("Discover hubs")) : void 0,
+        h("div.hubs.hubs-discover", discover.map(this.renderDiscoverHub)),
         this.renderAddHub(),
-        this.renderCreateModal()
+        this.renderCreateModal(),
+        this.community.renderDialog()
       ]);
     }
 

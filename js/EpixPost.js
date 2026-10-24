@@ -52,6 +52,8 @@
       // looked finished. This cap only guards against a lost signal.
       this.HUB_SYNC_MAX = 900000;
       this.hub_adds = new Map();
+      this.hub_downloads = new Map();
+      this.HUB_REQUEST_TIMEOUT = 30000;
       this.hub_sync = null;
       this.hub_sync_timer = null;
       this.site_info = null;
@@ -380,21 +382,8 @@
         this.merged_sites_retry = null;
         this.merged_sites = merged_sites;
         on_site_info.then(() => {
-          if (this.sitePermissions().indexOf("Merger:EpixPost") >= 0) {
-            var default_hubs = (this.site_info.content != null ? (this.site_info.content.settings != null ? this.site_info.content.settings.default_hubs : void 0) : void 0) || {};
-            // Auto-add waits for local storage: hubs the user explicitly
-            // removed (Stop seeding / Leave hub on the Hubs page) are
-            // remembered in settings.removed_hubs and not re-added.
-            this.on_local_storage.then(() => {
-              var removed_hubs = this.local_storage.settings.removed_hubs || {};
-              for (var address in default_hubs) {
-                if (!this.merged_sites[address] && !removed_hubs[address] && !this.hubAddInFlight(address)) {
-                  this.log("Auto-adding default hub", address);
-                  this.cmd("mergerSiteAdd", address, () => {});
-                }
-              }
-            });
-          }
+          // Featured hubs are suggestions. Only an explicit user action may
+          // download one, after its community labels and filters are checked.
           if (typeof cb === "function") cb(true);
         });
       });
@@ -444,9 +433,8 @@
       });
     }
 
-    // Every hub entry point uses cmd, including thread downloads and profile
-    // creation. Share each add until the node finishes it: each repeated
-    // command otherwise produces its own node-generated failure notification.
+    // Every hub entry point uses cmd, including links and profile creation.
+    // Keep command acknowledgements separate from verified download success.
     cmd(command, params, cb) {
       if (typeof params === "function") {
         cb = params;
@@ -454,7 +442,12 @@
       }
       if (command === "mergerSiteDelete") {
         var removed = typeof params === "string" ? params : Array.isArray(params) ? params[0] : params && params.address;
-        this.hub_adds.delete(removed);
+        var removed_entry = this.hub_adds.get(removed);
+        if (removed_entry) {
+          this.finishHubDownload(removed_entry, "idle", _("Hub removed"), false);
+          this.hub_adds.delete(removed);
+        }
+        this.hub_downloads.delete(removed);
       }
       if (command !== "mergerSiteAdd") {
         return super.cmd(command, params, cb);
@@ -480,14 +473,25 @@
         return;
       }
       addresses = Array.from(new Set(addresses));
+      if (this.content_hubs && typeof this.content_hubs.canDownload === "function"
+          && addresses.some((address) => this.content_hubs.canDownload(address) === false)) {
+        cb({ error: _("Review this hub and your filters on the Hubs page before downloading.") });
+        return;
+      }
       this.hub_adds.forEach((entry, address) => {
-        if (Date.now() >= entry.until) this.hub_adds.delete(address);
+        if (Date.now() >= entry.until) {
+          if (this.isHubDownloadActive(entry)) this.finishHubDownload(entry, "unavailable", _("The download timed out. You can retry or report this hub as unavailable."), false);
+          this.clearHubDownloadTimers(entry);
+          this.hub_adds.delete(address);
+        }
       });
       var fresh = [];
       var entries = addresses.map((address) => {
         if (this.hubAddInFlight(address)) return this.hub_adds.get(address);
-        var entry = { address: address, until: Date.now() + this.HUB_SYNC_MAX, callbacks: [], answered: false };
+        this.setHubRemoved(address, false);
+        var entry = { address: address, until: Date.now() + this.HUB_SYNC_MAX, callbacks: [], answered: false, state: "requesting", verify_id: 0 };
         this.hub_adds.set(address, entry);
+        this.hub_downloads.set(address, { state: "requesting" });
         fresh.push(entry);
         return entry;
       });
@@ -503,66 +507,140 @@
         else entry.callbacks.push(done);
       });
       if (!fresh.length) return;
-      fresh.forEach((entry) => this.beginHubSync(entry.address));
+      fresh.forEach((entry) => {
+        this.beginHubSync(entry.address);
+        entry.request_timer = setTimeout(() => {
+          if (this.hub_adds.get(entry.address) === entry && !entry.answered) {
+            this.finishHubDownload(entry, "error", _("The node did not answer the download request. Retry when it is connected."));
+          }
+        }, this.HUB_REQUEST_TIMEOUT);
+        entry.timer = setTimeout(() => {
+          this.finishHubDownload(entry, "unavailable", _("The download timed out. You can retry or report this hub as unavailable."));
+        }, this.HUB_SYNC_MAX);
+      });
       var targets = fresh.map((entry) => entry.address);
       return super.cmd(command, targets.length === 1 ? targets[0] : [targets], (result) => {
         fresh.forEach((entry) => {
-          entry.answered = true;
-          entry.result = result;
-          if (result && result.error && this.hub_adds.get(entry.address) === entry) {
-            this.endHubSync(entry.address, false);
+          if (this.hub_adds.get(entry.address) !== entry || !this.isHubDownloadActive(entry)) return;
+          if (result && result.error) {
+            this.finishHubDownload(entry, "error", String(result.error), false, result);
+          } else if (result !== "ok" && result !== true) {
+            this.finishHubDownload(entry, "error", _("The node did not accept the download request."));
+          } else {
+            clearTimeout(entry.request_timer);
+            entry.state = "downloading";
+            this.hub_downloads.set(entry.address, { state: "downloading" });
+            this.answerHubDownload(entry, result);
+            this.projector.scheduleRender();
+            if (entry.completion_seen) this.verifyHubDownload(entry);
           }
-          entry.callbacks.splice(0).forEach((done) => {
-            try {
-              done(result);
-            } catch (error) {
-              // A failed consumer must not prevent the other callers from
-              // receiving the response they are waiting for.
-              console.error("Hub add callback failed", error);
-            }
-          });
         });
       });
     }
 
+    answerHubDownload(entry, result) {
+      if (entry.answered) return;
+      entry.answered = true;
+      entry.result = result;
+      entry.callbacks.splice(0).forEach((done) => {
+        try { done(result); }
+        catch (error) { console.error("Hub add callback failed", error); }
+      });
+    }
+
+    isHubDownloadActive(entry) {
+      return entry && (entry.state === "requesting" || entry.state === "downloading");
+    }
+
+    clearHubDownloadTimers(entry) {
+      clearTimeout(entry.timer);
+      clearTimeout(entry.request_timer);
+      clearTimeout(entry.verify_timer);
+      entry.verify_id += 1;
+    }
+
+    isHubReady(site) {
+      return !!(site && site.content && site.content.merged_type === "EpixPost"
+        && Number(site.bad_files || 0) === 0 && Number(site.tasks || 0) === 0);
+    }
+
+    getHubDownload(address) {
+      var state = this.hub_downloads.get(address);
+      return state || { state: this.isHubReady(this.merged_sites[address]) ? "ready" : "idle" };
+    }
+
+    retryHubDownload(address, cb) {
+      var entry = this.hub_adds.get(address);
+      if (entry && !this.isHubDownloadActive(entry)) {
+        this.clearHubDownloadTimers(entry);
+        this.hub_adds.delete(address);
+      }
+      return this.cmd("mergerSiteAdd", address, cb);
+    }
+
+    // site_done means the node stopped trying, including failure. Inspect its
+    // current content and outstanding file work before declaring a hub ready.
+    verifyHubDownload(entry) {
+      if (this.hub_adds.get(entry.address) !== entry || !this.isHubDownloadActive(entry)) return;
+      var verification = ++entry.verify_id;
+      this.cmd("mergerSiteList", true, (sites) => {
+        if (this.hub_adds.get(entry.address) !== entry || !this.isHubDownloadActive(entry) || entry.verify_id !== verification) return;
+        if (!sites || typeof sites !== "object" || Array.isArray(sites) || sites.error) {
+          this.finishHubDownload(entry, "error", _("Could not check the hub download. Retry when the node is connected."));
+          return;
+        }
+        this.merged_sites = sites;
+        var site = sites[entry.address];
+        if (this.isHubReady(site)) {
+          this.finishHubDownload(entry, "ready");
+        } else if (site && Number(site.tasks || 0) > 0) {
+          clearTimeout(entry.verify_timer);
+          entry.verify_timer = setTimeout(() => this.verifyHubDownload(entry), 1000);
+        } else {
+          this.finishHubDownload(entry, "unavailable", _("A complete copy of this hub was not available. You can retry or report it as unavailable."));
+        }
+      });
+    }
+
+    finishHubDownload(entry, state, message, refresh = true, response = null) {
+      if (this.hub_adds.get(entry.address) !== entry || !this.isHubDownloadActive(entry)) return;
+      this.clearHubDownloadTimers(entry);
+      entry.state = state;
+      entry.until = Date.now() + 30000;
+      this.hub_downloads.set(entry.address, message ? { state: state, message: message } : { state: state });
+      this.endHubSync(entry.address, refresh);
+      this.projector.scheduleRender();
+      this.answerHubDownload(entry, response || (state === "ready" ? "ok" : { error: message || _("Download ended") }));
+    }
+
     needSite(address, cb) {
-      this.setHubRemoved(address, false);
-      if (this.merged_sites[address]) {
+      if (this.isHubReady(this.merged_sites[address])) {
         if (typeof cb === "function") cb(true);
       } else {
         this.cmd("mergerSiteAdd", address, typeof cb === "function" ? cb : () => {});
       }
     }
 
-    // Keep independent state for every hub, separate from the single visible
-    // progress banner. A short cooldown after completion also prevents the
-    // completion refresh from immediately retrying a failed download.
+    // Include the short terminal cooldown for command deduplication. The
+    // public lifecycle state tells views whether an attempt is still active.
     hubAddInFlight(address) {
       var entry = this.hub_adds.get(address);
       return !!(entry && Date.now() < entry.until);
     }
 
-    // Remember (or forget) that the user explicitly removed a hub, so
-    // updateSiteInfo does not auto re-add removed default hubs on the next
-    // refresh. Stored in local storage as settings.removed_hubs.
+    // Remember an explicit removal. Profile bootstrap also respects it, even
+    // though featured hubs are no longer downloaded automatically.
     setHubRemoved(address, removed) {
-      if (!this.local_storage) {
-        return;
-      }
-      var removed_hubs = this.local_storage.settings.removed_hubs;
+      if (!this.local_storage) return;
+      var settings = this.local_storage.settings || (this.local_storage.settings = {});
+      var removed_hubs = settings.removed_hubs;
       if (removed) {
-        if (!removed_hubs) {
-          removed_hubs = this.local_storage.settings.removed_hubs = {};
-        }
-        if (removed_hubs[address]) {
-          return;
-        }
+        if (!removed_hubs) removed_hubs = settings.removed_hubs = {};
+        if (removed_hubs[address]) return;
         removed_hubs[address] = true;
         this.saveLocalStorage();
       } else {
-        if (!removed_hubs || !removed_hubs[address]) {
-          return;
-        }
+        if (!removed_hubs || !removed_hubs[address]) return;
         delete removed_hubs[address];
         this.saveLocalStorage();
       }
@@ -801,29 +879,18 @@
       var ref = (content != null && content.settings != null)
         ? content.settings.default_hubs
         : null;
+      var settings = (this.local_storage && this.local_storage.settings) || {};
+      var removed = settings.removed_hubs || {};
+      var chosen = settings.hub;
+      if (chosen && this.merged_sites[chosen] && !removed[chosen]) default_hub = chosen;
       for (var address in ref) {
-        default_hub = address;
-        break;
+        if (!default_hub && this.merged_sites[address] && !removed[address]) default_hub = address;
       }
       if (!default_hub) {
-        this.log("No default hub configured");
+        this.log("Choose and download a hub before creating a profile");
         if (typeof cb === "function") cb(false);
         return;
       }
-      var ensureHub = () => {
-        if (!isCurrent()) return;
-        if (!this.merged_sites[default_hub]) {
-          this.log("Seeding default hub", default_hub);
-          Page.cmd("mergerSiteAdd", default_hub, () => {
-            if (!isCurrent()) return;
-            this.updateSiteInfo(() => {
-              createProfile();
-            });
-          });
-        } else {
-          createProfile();
-        }
-      };
       var createProfile = () => {
         if (!isCurrent()) return;
         var user = new User({
@@ -861,7 +928,7 @@
           }, isIdentityCurrent);
         });
       };
-      ensureHub();
+      createProfile();
     }
 
     signSiteContent(cb) {
@@ -927,10 +994,19 @@
       // The node finished adding this hub (success or failure). That is the
       // only trustworthy "done" - take the bar down now and pick up whatever
       // landed, instead of waiting out an idle timer.
+      var entry = this.hub_adds.get(site_info.address);
       if (kind === "site_done") {
-        this.endHubSync(site_info.address);
+        if (entry && this.isHubDownloadActive(entry)) {
+          entry.completion_seen = true;
+          if (entry.answered) this.verifyHubDownload(entry);
+        } else if (!entry) {
+          this.endHubSync(site_info.address);
+        }
         return;
       }
+      // Late traffic from a finished or timed-out attempt must not restart
+      // its loading indicator. An explicit retry creates a fresh attempt.
+      if (entry && !this.isHubDownloadActive(entry)) return;
       // Only file traffic is download activity. The announce loop pushes
       // peers_added for a merged site every few seconds indefinitely; letting
       // those re-arm the idle timer kept the bar up forever, frozen on the

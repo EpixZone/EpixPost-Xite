@@ -278,3 +278,30 @@ test("a profile publish failure completes boot without reporting a selected prof
   assert.equal(Page.user.auth_address, null);
   assert.equal(calls.some((call) => call.command === "dbQuery"), false);
 });
+
+test("profile bootstrap never downloads an unseeded default hub", () => {
+  const {Page, calls, take, info} = fixture();
+  Page.merged_sites = {};
+  Page.site_info = info("alice");
+  let completed;
+  Page.checkUser(found => { completed = found; });
+  take("dbQuery").cb([]);
+  assert.equal(completed, false);
+  assert.equal(calls.some(call => ["mergerSiteAdd", "fileWrite", "sitePublish"].includes(call.command)), false);
+});
+
+test("profile bootstrap respects removed defaults and a chosen seeded hub", () => {
+  for (const chosen of [null, "chosen-hub"]) {
+    const {Page, calls, take, info} = fixture();
+    Page.site_info = info("alice");
+    Page.local_storage.settings.removed_hubs = {"default-hub": true};
+    if (chosen) {
+      Page.local_storage.settings.hub = chosen;
+      Page.merged_sites[chosen] = {};
+    }
+    Page.checkUser(); take("dbQuery").cb([]);
+    if (chosen) assert.equal(take("fileGet").params.inner_path, "merged-EpixPost/chosen-hub/data/users/alice.epix/data.json");
+    else assert.equal(calls.some(call => call.command === "fileGet"), false);
+    assert.equal(calls.some(call => call.command === "mergerSiteAdd"), false);
+  }
+});

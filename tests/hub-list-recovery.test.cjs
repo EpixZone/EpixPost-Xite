@@ -134,38 +134,28 @@ test("the backoff grows and caps while the node keeps refusing", () => {
   assert.deepEqual(delays, [2000, 4000, 8000, 15000, 15000, 15000]);
 });
 
-test("a default hub whose add is in flight is not asked for again", () => {
+test("refreshes never automatically download default hubs", () => {
   const { Page, calls, answer, siteInfo, advance } = page();
   const adds = () => calls.filter((c) => c.cmd === "mergerSiteAdd").length;
-  // Boot: the hub is not merged yet, so the page asks the node to add it.
-  Page.updateSiteInfo();
-  answer("mergerSiteList", {});
-  answer("siteInfo", siteInfo());
-  assert.equal(adds(), 1, "the first refresh adds the default hub");
-  assert.equal(Page.hubAddInFlight(HUB), true);
-
-  // Each hub file landing re-runs the refresh; the hub is still not listed.
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     Page.updateSiteInfo();
     answer("mergerSiteList", {});
     answer("siteInfo", siteInfo());
   }
-  assert.equal(adds(), 1, "an add in flight is not repeated");
-  assert.equal(Page.needSite(HUB, () => {}), undefined);
-  assert.equal(adds(), 1, "needSite does not repeat it either");
-
-  // The node reports the add finished: the in-flight state ends, and the
-  // refresh that follows must not immediately re-add a failed hub.
+  assert.equal(adds(), 0, "default hubs must be reviewed before downloading");
+  Page.needSite(HUB, () => {});
+  answer("mergerSiteAdd", "ok");
+  assert.equal(adds(), 1, "an explicit request can download a default hub");
   Page.noteHubProgress({ address: HUB, event: ["site_done", HUB] });
-  assert.equal(Page.hubAddInFlight(HUB), true, "the completed attempt gets a short cooldown");
+  answer("mergerSiteList", {});
   answer("mergerSiteList", {});
   answer("siteInfo", siteInfo());
-  assert.equal(adds(), 1, "the completion refresh does not loop on a missing hub");
+  assert.equal(Page.getHubDownload(HUB).state, "unavailable");
   advance(30001);
   Page.updateSiteInfo();
   answer("mergerSiteList", {});
   answer("siteInfo", siteInfo());
-  assert.equal(adds(), 2, "a later refresh can retry the missing hub");
+  assert.equal(adds(), 1, "refresh does not retry an unavailable hub");
 });
 
 test("a reopened websocket refreshes the site info instead of doing nothing", () => {
@@ -360,11 +350,9 @@ test("expired hub attempts are removed when another add starts", () => {
   assert.equal(Page.hub_adds.has(HUB), false);
 });
 
-test("fire-and-forget automatic adds consume command errors", () => {
-  const { Page, answer, siteInfo } = page();
-  Page.updateSiteInfo();
-  answer("mergerSiteList", {});
-  answer("siteInfo", siteInfo());
+test("fire-and-forget explicit downloads consume command errors", () => {
+  const { Page, answer } = page();
+  Page.needSite(HUB);
   answer("mergerSiteAdd", { error: "Not a merger xite" });
   assert.equal(Page.hubSyncActive(), false);
   assert.equal(Page.needSite("null"), undefined);
@@ -407,8 +395,11 @@ test("a completed hub refreshes the feed while another hub keeps its banner", ()
   Page.content = { update() { updates++; } };
   Page.noteHubProgress({ address: HUB, event: ["site_done", HUB] });
   assert.equal(calls.filter((call) => call.cmd === "mergerSiteList").length, 1);
-  answer("mergerSiteList", { [HUB]: {}, [other]: {} });
+  const sites = { [HUB]: {content: {merged_type: "EpixPost"}, bad_files: 0, tasks: 0}, [other]: {} };
+  answer("mergerSiteList", sites);
+  answer("mergerSiteList", sites);
   answer("siteInfo", siteInfo());
+  assert.equal(Page.getHubDownload(HUB).state, "ready");
   assert.equal(updates, 1, "completed hub records become visible");
   assert.equal(Page.hub_sync, banner);
   assert.equal(Page.hub_sync.address, other);
