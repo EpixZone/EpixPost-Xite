@@ -13,7 +13,10 @@
 <section id="checks">
   <h1>Editor layout checks</h1>
   <p>Runs automatically. Open this file directly or serve the repository locally.
-    Test at desktop and mobile widths, including Firefox 140 ESR.</p>
+    Test at desktop and mobile widths, including Firefox 140 ESR and a coarse pointer.</p>
+  <p><a href="?preview=buttons">Preview editor buttons</a> |
+    <a href="?preview=buttons&amp;touch=1">Preview with touch rules</a></p>
+  <p id="pointer-mode"></p>
   <strong id="status">RUNNING</strong>
 </section>
 <div id="fixture"></div>
@@ -66,6 +69,23 @@ Page.projector.append(document.querySelector("#fixture"), () => h("div", [
 
 window.layoutResults = [];
 document.documentElement.dataset.testStatus = "running";
+const touchSimulation = new URLSearchParams(location.search).get("touch") === "1";
+function applyTouchRules() {
+  document.querySelector("#pointer-mode").textContent = touchSimulation
+    ? "Touch rules enabled from the current stylesheet."
+    : "Pointer: " + (matchMedia("(pointer: coarse)").matches ? "coarse" : "fine");
+  if (!touchSimulation) return;
+  // Exercise the actual touch declarations when a desktop browser cannot
+  // emulate pointer: coarse. Read all.css instead of keeping a second copy.
+  const sheet = Array.from(document.styleSheets).find(item => item.href && /\/css\/all\.css(?:\?|$)/.test(item.href));
+  if (!sheet) throw new Error("The application stylesheet did not load");
+  const rules = Array.from(sheet.cssRules).filter(rule => rule.conditionText === "(pointer: coarse)");
+  if (!rules.length) throw new Error("The stylesheet has no coarse-pointer rules");
+  const style = document.createElement("style");
+  style.dataset.touchSimulation = "true";
+  style.textContent = rules.flatMap(rule => Array.from(rule.cssRules, item => item.cssText)).join("\n");
+  document.head.appendChild(style);
+}
 const wait = (ms = 350) => new Promise(resolve => setTimeout(resolve, ms));
 function check(name, ok, detail = "") {
   layoutResults.push({ name, passed: !!ok, detail });
@@ -81,7 +101,36 @@ async function openMenu() {
   await wait();
   return document.querySelector(".post .menu.visible");
 }
+function checkEditorButtons(editor, prefix) {
+  const row = editor.querySelector(".editablebuttons");
+  const rowBox = row.getBoundingClientRect();
+  for (const action of ["Delete", "Save"]) {
+    const button = row.querySelector('a[href="#' + action + '"]');
+    const box = button.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    const labelBox = range.getBoundingClientRect();
+    const centerOffset = Math.abs((box.top + box.bottom - labelBox.top - labelBox.bottom) / 2);
+    const style = getComputedStyle(button);
+    check(prefix + ": " + action + " button stays compact", box.height >= 30 && box.height <= 34,
+      "height=" + box.height + ", min-height=" + style.minHeight + ", coarse=" + matchMedia("(pointer: coarse)").matches + ", touch simulation=" + touchSimulation);
+    check(prefix + ": " + action + " label is vertically centered", centerOffset <= 1.5,
+      "center offset=" + centerOffset.toFixed(2) + "px");
+    check(prefix + ": " + action + " button stays inside its row",
+      box.left >= rowBox.left - 1 && box.right <= rowBox.right + 1);
+  }
+}
+async function previewButtons() {
+  applyTouchRules();
+  await wait();
+  const menu = await openMenu();
+  click(Array.from(menu.querySelectorAll("a")).find(node => node.textContent === "Edit"));
+  await wait();
+  checkEditorButtons(posts[0].editable_body.field_edit.node.parentNode, "Preview");
+}
+
 async function run() {
+  applyTouchRules();
   await wait();
   const menu = await openMenu();
   const menuBox = menu.getBoundingClientRect();
@@ -100,6 +149,7 @@ async function run() {
     click(Array.from(menu.querySelectorAll("a")).find(node => node.textContent === "Edit"));
     await wait();
     const field = posts[0].editable_body.field_edit.node;
+    checkEditorButtons(field.parentNode, action);
     check(action + ": multiline editor fits before typing", field.clientHeight >= field.scrollHeight,
       "clientHeight=" + field.clientHeight + ", scrollHeight=" + field.scrollHeight);
     field.value += "\nOne more line";
@@ -121,7 +171,8 @@ async function run() {
     await wait();
   }
 }
-run().catch(error => check("Fixture completed without errors", false, error.stack || String(error))).finally(() => {
+const preview = new URLSearchParams(location.search).get("preview") === "buttons";
+(preview ? previewButtons() : run()).catch(error => check("Fixture completed without errors", false, error.stack || String(error))).finally(() => {
   if (Page.composer.visible) Page.composer.close();
   const passed = layoutResults.every(result => result.passed);
   document.querySelector("#status").textContent = passed ? "PASS" : "FAIL";

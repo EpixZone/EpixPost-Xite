@@ -130,6 +130,27 @@ Tests cover community identity and provenance, duplicate reports, withdrawals,
 expiry, write failures, account changes, download lifecycle and retries, filters,
 explicit hub selection, and existing feed/profile behavior.
 
+For browser regression checks, serve the repository over local HTTP:
+
+- `tests/editor-layout.html` checks editor sizing, Save/Cancel behavior and
+  composer layering. Add `?touch=1` to apply the stylesheet's coarse-pointer
+  rules on a desktop browser, or `?preview=buttons&touch=1` to keep the editor
+  open for inspection. Check both desktop and mobile viewport widths.
+- `tests/navigation-history.html` uses the real router and frame message
+  dispatcher with native browser history and local view fixtures. Follow its
+  Back/Forward steps and check that the view, stored route and loaded state
+  agree. No node or account is required.
+- `tests/startup-recovery.html` recreates the real app startup inside an iframe
+  while its local wrapper remains connected. Check that it reaches Ready with
+  one server-info request and one language load, including when the wrapper
+  sends no open notification. Its reconnect button should refresh data without
+  loading the language again. No node or account is required.
+
+To compare navigation or startup with the original source, extract commit `b4df249` into
+an `EpixPost-before` directory next to this repository, serve their parent
+directory, and open the corresponding fixture with `?source=before` or
+`?source=after`.
+
 ### Publishing this update
 
 A GitHub merge alone does not update `post.epix`. The app owner must install the

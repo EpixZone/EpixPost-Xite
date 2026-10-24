@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epix Post startup frame</title>
+<style>
+  body { margin: 0; font: 16px system-ui, sans-serif; color: #27344b; background: #f6f8fc; }
+  #loading-overlay { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; background: #f6f8fc; }
+  #loading-overlay.fade-out { opacity: 0; transition: opacity .25s; }
+  .spinner { width: 34px; height: 34px; margin: 0 auto 20px; border: 3px solid #dce3f1; border-top-color: #4766a7; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-bar-fill { height: 4px; margin-top: 18px; background: #4766a7; }
+  #Shell { padding: 35px; }
+  #feed-ready { display: none; }
+  body.loaded #feed-ready { display: block; }
+</style>
+<div id="loading-overlay"><div class="spinner"></div><strong>Epix Post</strong><p id="loading-step">Connecting...</p><div id="loading-bar-fill"></div></div>
+<div id="Shell"><div id="Content"></div><div id="feed-ready"><h1>Feed is ready</h1><p>The recreated iframe completed startup.</p></div></div>
+<div id="Overlay"></div>
+<script src="../js/lib/epixframe.js"></script>
+<script src="../js/utils/Deferred.js"></script>
+<script>window.marked = { Renderer: class {} };</script>
+<script src="../js/utils/Text.js"></script>
+<script>
+(async () => {
+  const controller = new AbortController();
+  let active = true;
+  window.addEventListener("pagehide", () => {
+    active = false;
+    controller.abort();
+  }, { once: true });
+  const mode = new URLSearchParams(location.search).get("source");
+  const sourcePath = mode === "before" ? "../../EpixPost-before/js/EpixPost.js" : "../js/EpixPost.js";
+  const response = await fetch(sourcePath, { cache: "no-store", signal: controller.signal });
+  if (!response.ok) throw new Error("Could not load " + sourcePath);
+  const source = await response.text();
+  if (!active || !document.body) return;
+  let languageLoads = 0, siteUpdates = 0, contentUpdates = 0;
+  window.base = { href: location.origin + "/post/" };
+  window.Time = { timestamp: () => Math.floor(Date.now() / 1000) };
+  window._ = value => value;
+  window.$ = selector => document.querySelector(selector);
+  window.loadLanguage = (language, cb) => { languageLoads++; cb(); };
+  window.maquette = {
+    h() {}, createProjector() {
+      return { detach() {}, replace(target, render) { render(); },
+        scheduleRender() { requestAnimationFrame(() => { if (active) { Page.content.render(); report(); } }); } };
+    }
+  };
+  class View {
+    constructor() {
+      this.render = () => {
+        if (Page.on_user_info.resolved && !Page.on_loaded.resolved) Page.on_loaded.resolve();
+      };
+    }
+    update() { contentUpdates++; Page.projector.scheduleRender(); }
+  }
+  for (const name of ["Shell", "Overlay", "ContentFeed", "ContentUsers", "ContentProfile", "ContentThread",
+    "ContentCreateProfile", "ContentHubs", "ContentSettings", "Scrollwatcher"]) window[name] = View;
+  (0, eval)(source.replace("window.Page = new EpixPost();", "window.EpixPost = EpixPost;")
+    .replace("window.Page.createProjector();", "") + "\n//# sourceURL=" + sourcePath);
+  // Network-dependent account and feed details are stubbed; preserve the
+  // real frame constructor, startup path, language gate and loading state.
+  EpixPost.prototype.checkUser = callback => callback();
+  EpixPost.prototype.updateSiteInfo = function (callback) {
+    siteUpdates++;
+    this.cmd("siteInfo", {}, info => {
+      this.site_info = info;
+      this.on_site_info.resolve();
+      if (callback) callback();
+      report();
+    });
+  };
+  function report() {
+    if (!active || !window.Page || !document.body) return;
+    parent.postMessage({ type: "startupStatus", status: {
+      loadingStep: document.getElementById("loading-step")?.textContent || "Ready!",
+      contentStarted: Page.content_started, bodyLoaded: document.body.classList.contains("loaded"),
+      loadingResolved: Page.on_loaded.resolved, languageLoads, siteUpdates, contentUpdates
+    } }, location.origin);
+  }
+  window.Page = new EpixPost();
+  Page.createProjector();
+  // markLoaded already registers first and schedules the loaded class.
+  // Report on the following animation-frame callback without changing it.
+  Page.on_loaded.then(() => requestAnimationFrame(report));
+  report();
+})().catch(error => {
+  if (error.name === "AbortError") return;
+  const step = document.getElementById("loading-step");
+  if (step) step.textContent = error.stack;
+});
+</script>
+</html>

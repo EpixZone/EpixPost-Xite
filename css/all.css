@@ -1343,6 +1343,8 @@ a.settings-row.settings-nav:hover .settings-row-chevron { color: var(--epix-acce
 .editable:hover .icon-edit, .editable .icon-edit:focus-visible { opacity: 0.7 }
 .editable .icon-edit:hover { opacity: 1; background-color: var(--epix-surface-2); transition: none }
 .editable .editablebuttons { text-align: right; padding: 8px 0 4px 0; display: flex; gap: 8px; justify-content: flex-end; align-items: center }
+/* Keep compact editor actions centered when generic touch targets grow. */
+.editable .editablebuttons .button { display: inline-flex; align-items: center; justify-content: center; min-height: 30px }
 .editable .empty { opacity: 0.6; cursor: pointer }
 .editable .cancel { font-size: 13px; color: var(--epix-text-low); margin-right: auto }
 
