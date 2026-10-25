@@ -108,6 +108,10 @@ against the xID's active keys from the node's proof-verified name resolution,
 along with the source certificate rules. A hub owner's signature alone cannot
 impersonate a reviewer. Invalid reviews are excluded with a visible warning;
 verification service failures keep new downloads gated until reports reload.
+If RPC attestations briefly lag behind the node's validator pin (`HeightBeforePin`),
+the client waits six seconds and requests a fresh verified proof once. Other
+verification errors remain visible, and an unsuccessful retry never permits signing
+or writing a review.
 The policy uses reported classifications as personal filtering signals, not a
 claim of community consensus or protection against coordinated identities.
 

@@ -606,3 +606,217 @@ test("lost proof/sign replies terminate and cannot write after timeout or identi
     assert.equal(results.length, 1);
   }
 });
+
+const HEIGHT_BEFORE_PIN = "finality not verified: finality proof rejected: HeightBeforePin";
+function activeSnapshot(name = "alice") {
+  return {name, tld:"epix", identities:[{address:SIGNERS[name], active:true, revoked_at:0, revoked_at_time:0}]};
+}
+function proofCalls(state) { return state.calls.filter(call => call.cmd === "xidResolveName"); }
+function assertNoSignedMutation(state) {
+  assert.equal(state.calls.some(call => ["ecdsaSign", "ecdsaVerify", "fileWrite", "sitePublish"].includes(call.cmd)), false);
+}
+
+test("an unavailable-only review retries HeightBeforePin once before verifying, writing and publishing", () => {
+  const state = fixture();
+  let attempts = 0;
+  state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} : activeSnapshot());
+  const results = state.beginSave({availability:"unavailable"});
+  assert.deepEqual(results, [], "a transient proof error must wait for the bounded retry");
+  assertNoSignedMutation(state);
+  state.advance(5999);
+  assert.equal(proofCalls(state).length, 1);
+  state.advance(1);
+  assert.equal(proofCalls(state).length, 2);
+  assert.ok(proofCalls(state).every(call => call.params[0] === "alice.epix"));
+  assert.equal(state.calls.filter(call => call.cmd === "ecdsaSign").length, 1);
+  assert.equal(state.calls.filter(call => call.cmd === "ecdsaVerify").length, 1);
+  const write = state.take("fileWrite");
+  const stored = JSON.parse(Buffer.from(write.params[1], "base64").toString());
+  const review = stored.hub_review[0];
+  assert.equal(review.availability, "unavailable");
+  assert.equal(review.rating, null);
+  assert.equal(review.address, TARGET);
+  assert.equal(review.signer, SIGNERS.alice);
+  assert.equal(verifyMessage(messageFor(review, "alice.epix"), SIGNERS.alice, review.signature), true);
+  assert.deepEqual(results, []);
+  write.cb("ok");
+  state.answer("sitePublish", "ok");
+  state.answer("dbQuery", [row("alice", review)]);
+  assert.deepEqual(results, ["ok"]);
+  assert.equal(state.community.getSummary(TARGET).availability, "unavailable");
+});
+
+test("a repeated HeightBeforePin error stops after two proofs and preserves its cause", () => {
+  const state = fixture();
+  state.setSnapshotResolver(() => ({error:HEIGHT_BEFORE_PIN}));
+  const results = state.beginSave({availability:"unavailable"});
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 2);
+  assert.equal(results.length, 1);
+  assert.match(results[0].error, /chain verification/i);
+  assert.ok(results[0].error.includes(HEIGHT_BEFORE_PIN));
+  assertNoSignedMutation(state);
+  state.advance(45000);
+  assert.equal(proofCalls(state).length, 2);
+  assert.equal(results.length, 1);
+  assert.equal(state.community.saving, false);
+});
+
+test("other proof failures and unknown API errors remain visible without automatic retries", () => {
+  for (const message of [
+    "Unknown command: xidResolveName",
+    "finality not verified: finality proof rejected: InvalidSignature",
+    "finality not verified: finality proof rejected: FinalityAdvanced",
+    "The chain proof request timed out"
+  ]) {
+    const state = fixture();
+    state.setSnapshotResolver(() => ({error:message}));
+    const results = state.beginSave({availability:"unavailable"});
+    assert.equal(results.length, 1);
+    assert.match(results[0].error, /chain verification/i);
+    assert.ok(results[0].error.includes(message), results[0].error);
+    state.advance(6000);
+    assert.equal(proofCalls(state).length, 1);
+    assertNoSignedMutation(state);
+  }
+});
+
+test("a missing signing-key proof reports its timeout and ignores a late valid reply", () => {
+  const state = fixture();
+  state.setSnapshotResolver(null);
+  const results = state.beginSave({availability:"unavailable"});
+  const lateProof = state.take("xidResolveName");
+  state.advance(15000);
+  assert.equal(results.length, 1);
+  assert.match(results[0].error, /chain verification/i);
+  assert.match(results[0].error, /timed out/);
+  lateProof.cb(activeSnapshot());
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 1);
+  assertNoSignedMutation(state);
+  assert.equal(results.length, 1);
+});
+
+test("missing active key membership is a linkage error and never retries or signs", () => {
+  const snapshots = [
+    {}, {name:"alice", tld:"epix", owner:SIGNERS.alice, identities:[]},
+    activeSnapshot("bob"), {...activeSnapshot(), tld:"other"},
+    ...[{active:false}, {revoked_at:1}, {revoked_at_time:NOW-1}, {address:SIGNERS.bob}]
+      .map(change => ({...activeSnapshot(), identities:[{address:SIGNERS.alice, active:true, ...change}]}))
+  ];
+  for (const snapshot of snapshots) {
+    const state = fixture();
+    state.setSnapshotResolver(() => snapshot);
+    const results = state.beginSave({availability:"unavailable"});
+    assert.equal(results.length, 1);
+    assert.match(results[0].error, /not an active signing key/i);
+    state.advance(6000);
+    assert.equal(proofCalls(state).length, 1);
+    assertNoSignedMutation(state);
+  }
+});
+
+test("a retry must return fresh active membership before any signing is allowed", () => {
+  const state = fixture();
+  let attempts = 0;
+  state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} :
+    {...activeSnapshot(), identities:[{address:SIGNERS.alice, active:false}]});
+  const results = state.beginSave({availability:"unavailable"});
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 2);
+  assert.match(results[0].error, /not an active signing key/i);
+  assertNoSignedMutation(state);
+});
+
+test("identity changes and unjoined source hubs cancel a pending save proof retry", () => {
+  for (const change of [
+    state => { state.Page.site_info.auth_address = SIGNERS.bob; state.Page.site_info.cert_user_id = "bob@xid.epix"; state.Page.site_info.xid_directory = "bob.epix"; },
+    state => { delete state.Page.user_hubs[SOURCE]; },
+    state => { delete state.Page.merged_sites[SOURCE]; }
+  ]) {
+    const state = fixture();
+    let attempts = 0;
+    state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} : activeSnapshot());
+    const results = state.beginSave({availability:"unavailable"});
+    assert.deepEqual(results, []);
+    change(state);
+    state.advance(6000);
+    assert.equal(proofCalls(state).length, 1);
+    assertNoSignedMutation(state);
+    state.advance(45000);
+    assert.equal(results.length, 1);
+    assert.equal(typeof results[0].error, "string");
+    assert.equal(state.community.saving, false);
+  }
+});
+
+test("the overall save deadline prevents a scheduled proof retry from starting late", () => {
+  const state = fixture();
+  state.setSnapshotResolver(null);
+  const results = [];
+  state.community.saveReview(TARGET, {availability:"unavailable"}, value => results.push(plain(value)));
+  state.advance(14000); state.answer("dbQuery", []);
+  state.advance(14000); state.answer("fileGet", null);
+  const proof = state.take("xidResolveName");
+  state.advance(14000); proof.cb({error:HEIGHT_BEFORE_PIN});
+  assert.deepEqual(results, []);
+  state.advance(3000);
+  assert.equal(results.length, 1);
+  assert.match(results[0].error, /timed out/);
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 1);
+  assertNoSignedMutation(state);
+  assert.equal(results.length, 1);
+});
+
+test("loading community reviews retries the transient proof once and shares the verified result", () => {
+  const state = fixture();
+  let attempts = 0;
+  state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} : activeSnapshot());
+  const results = [];
+  state.community.load(value => results.push(plain(value)));
+  state.answer("dbQuery", [row("alice", {rating:"g"}), row("alice", {source:OTHER, rating:"g"})]);
+  assert.deepEqual(results, []);
+  assert.equal(proofCalls(state).length, 1);
+  state.advance(5999);
+  assert.equal(proofCalls(state).length, 1);
+  state.advance(1);
+  assert.equal(proofCalls(state).length, 2);
+  assert.deepEqual(results, ["ok"]);
+  assert.equal(state.community.getSummary(TARGET).review_count, 1);
+  assert.equal(state.community.getSummary(TARGET).rating, "g");
+});
+
+test("a superseded load cancels its delayed proof retry and cannot replace newer evidence", () => {
+  const state = fixture();
+  let attempts = 0;
+  state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} : activeSnapshot());
+  const oldResults = [], newResults = [];
+  state.community.load(value => oldResults.push(plain(value)));
+  state.answer("dbQuery", [row("alice", {rating:"a"})]);
+  assert.deepEqual(oldResults, []);
+  state.community.load(value => newResults.push(plain(value)));
+  state.answer("dbQuery", []);
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 1);
+  assert.deepEqual(newResults, ["ok"]);
+  assert.equal(oldResults.length, 1);
+  assert.equal(oldResults[0].superseded, true);
+  assert.equal(state.community.getSummary(TARGET).review_count, 0);
+  assertNoSignedMutation(state);
+});
+
+test("a source unjoined while a load waits for a proof retry is not queried or verified again", () => {
+  const state = fixture();
+  let attempts = 0;
+  state.setSnapshotResolver(() => ++attempts === 1 ? {error:HEIGHT_BEFORE_PIN} : activeSnapshot());
+  const results = [];
+  state.community.load(value => results.push(plain(value)));
+  state.answer("dbQuery", [row("alice", {rating:"a"})]);
+  assert.deepEqual(results, []);
+  delete state.Page.merged_sites[SOURCE];
+  state.advance(6000);
+  assert.equal(proofCalls(state).length, 1);
+  assert.equal(state.community.getSummary(TARGET).review_count, 0);
+  assertNoSignedMutation(state);
+});

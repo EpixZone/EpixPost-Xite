@@ -250,6 +250,31 @@
       });
     }
 
+    resolveIdentity(identity, isCurrent, cb) {
+      var active = true, retryTimer = null;
+      var cancel = function() {
+        active = false;
+        clearTimeout(retryTimer);
+      };
+      var attempt = (canRetry) => {
+        if (!active || !isCurrent()) { cancel(); return; }
+        this.request("xidResolveName", [identity], (snapshot) => {
+          if (!active || !isCurrent()) { cancel(); return; }
+          // The light client can advance its validator pin before the RPC's
+          // attestations catch up. Wait roughly one block, then request a new
+          // fully verified proof. Never reuse or accept the rejected proof.
+          if (canRetry && snapshot && typeof snapshot.error === "string" && /\bHeightBeforePin\b/.test(snapshot.error)) {
+            retryTimer = setTimeout(function() { attempt(false); }, 6000);
+            return;
+          }
+          cancel();
+          cb(snapshot);
+        });
+      };
+      attempt(true);
+      return cancel;
+    }
+
     load(cb) {
       var generation = ++this.load_generation;
       this.request("dbQuery", "SELECT hub_review.*, json.site AS source, json.directory, json.cert_auth_type, json.cert_user_id " +
@@ -275,11 +300,11 @@
           this.rejected_source_count = rejected;
           this.warning = rejected ? "Some hub reviews could not be verified and were excluded. Community information may be incomplete." : null;
           if (cb) cb("ok", latest);
-        });
+        }, () => generation === this.load_generation);
       });
     }
 
-    verifySources(rows, cb) {
+    verifySources(rows, cb, isCurrent) {
       var groups = Object.create(null);
       var rejected = Object.create(null);
       var now = nowSeconds();
@@ -301,9 +326,11 @@
       var trusted = [];
       var verificationError = null;
       var finished = false;
+      var cancelProofs = [];
       var finishVerification = function() {
         if (finished) return;
         finished = true;
+        cancelProofs.forEach(function(cancel) { cancel(); });
         cb(trusted, Object.keys(rejected).length, verificationError);
       };
       var checkFailure = function(result) {
@@ -324,12 +351,23 @@
           return;
         }
         snapshots[identity] = {waiting: [next]};
-        this.request("xidResolveName", [identity], function(snapshot) {
+        cancelProofs.push(this.resolveIdentity(identity, function() {
+          if (finished) return false;
+          if (isCurrent && !isCurrent()) { finishVerification(); return false; }
+          var joined = keys.some(function(key) {
+            return groups[key].identity === identity && Page.merged_sites && Page.merged_sites[groups[key].source];
+          });
+          if (!joined) {
+            verificationError = error("Your joined hubs changed. Reload the community reports.");
+            finishVerification();
+          }
+          return joined;
+        }, function(snapshot) {
           if (finished) return;
           var waiting = snapshots[identity].waiting;
           snapshots[identity] = {value: snapshot};
           waiting.forEach(function(callback) { callback(snapshot); });
-        });
+        }));
       };
       eachLimited(keys, 4, (key, finish) => {
         if (finished) return;
@@ -414,10 +452,12 @@
       this.saving = true;
       var job = this.queue.shift();
       var finished = false;
+      var cancelProof = function() {};
       var done = (result) => {
         if (finished) return;
         finished = true;
         clearTimeout(timer);
+        cancelProof();
         this.saving = false;
         try { if (job.cb) job.cb(result); } finally { this.drain(); }
       };
@@ -467,10 +507,14 @@
             var signed = normalizedRow(Object.assign({}, record, {source: job.source,
               directory: "data/users/" + job.identity, cert_auth_type: "xid",
               cert_user_id: Page.site_info.cert_user_id}), nowSeconds());
-            this.request("xidResolveName", [job.identity], (snapshot) => {
+            cancelProof = this.resolveIdentity(job.identity, guard, (snapshot) => {
               if (!guard()) return;
+              if (snapshot && snapshot.error) {
+                return done(error("Chain verification for " + job.identity + " failed. " +
+                  failure(snapshot, "The node could not verify your xID. Try publishing again when chain verification is available.").error));
+              }
               if (!validSigner(snapshot, job.identity, job.signer)) {
-                return done(error("Your xId signing key could not be verified. Reload and try again when chain verification is available."));
+                return done(error("The selected key is not an active signing key for " + job.identity + ". Select a linked xID key and try again."));
               }
               var message = signedMessage(signed);
               this.request("ecdsaSign", [message], (signature) => {
