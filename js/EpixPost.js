@@ -33,6 +33,7 @@
       // Guards startContent: the language load and the safety timer race to
       // begin the content path, and only the first may win.
       this.content_started = false;
+      this.content_bootstrap_started = false;
       this.merged_sites = {};
       this.merged_sites_retry = null;  // Backoff (ms) while the node cannot list them yet
       // Live download of a hub we merged: see noteHubProgress. Cleared by
@@ -137,6 +138,10 @@
       setInterval(function() {
         Page.projector.scheduleRender();
       }, 60 * 1000);
+      // History can recreate this iframe while its wrapper stays connected.
+      // That wrapper may not repeat the open notification, so begin once
+      // the projector is ready. The wrapper queues reads until connected.
+      this.onOpenWebsocket();
     }
 
     setLoadingProgress(percent, label) {
@@ -316,6 +321,8 @@
         });
         return;
       }
+      if (this.content_bootstrap_started) return;
+      this.content_bootstrap_started = true;
       this.cmd("wrapperSetViewport", "width=device-width, initial-scale=1");
       this.setLoadingProgress(15, _("Loading site info..."));
       // The language file must land BEFORE the content path starts. Nearly
@@ -959,16 +966,23 @@
       if (cmd === "setSiteInfo") {
         this.setSiteInfo(params);
       } else if (cmd === "wrapperPopState") {
-        if (params.state) {
-          if (!params.state.url) {
-            params.state.url = params.href.replace(/.*\?/, "");
-          }
-          this.on_loaded.resolved = false;
-          this.on_loaded.then(this.markLoaded);
-          document.body.classList.remove("loaded");
-          window.scroll(window.pageXOffset, params.state.scrollTop || 0);
-          this.route(params.state.url || "");
-        }
+        // The initial browser entry can have no state. The wrapper supplies
+        // its current URL alongside e.state, including on Back and Forward.
+        var state = params.state || {};
+        var href = params.href || "";
+        var query_start = href.indexOf("?");
+        var query = query_start === -1 ? "" : href.slice(query_start + 1).split("#")[0];
+        this.history_state = Object.assign({}, state, {
+          url: typeof state.url === "string" ? state.url : query
+        });
+        this.on_loaded.resolved = false;
+        this.on_loaded.then(this.markLoaded);
+        document.body.classList.remove("loaded");
+        window.scroll(window.pageXOffset, this.history_state.scrollTop || 0);
+        this.route(this.history_state.url);
+        // Feed aliases can reuse the current view without route remounting
+        // it. Render once so that view can finish the loading cycle too.
+        this.projector.scheduleRender();
       } else {
         this.log("Unknown command", cmd, params);
       }

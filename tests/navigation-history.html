@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epix Post history verification</title>
+<style>
+  body { margin: 0; font: 16px system-ui, sans-serif; color: #172033; background: #f6f7fb; }
+  body:not(.loaded) { overflow: hidden; }
+  main { max-width: 960px; margin: 24px auto; padding: 24px; background: white; border-radius: 12px; }
+  h1 { margin-top: 0; font-size: 25px; }
+  nav, .controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+  a, button { color: #3155b8; }
+  nav a, button { border: 1px solid #cad3e7; padding: 10px 14px; border-radius: 6px; background: white; }
+  button { font: inherit; cursor: pointer; }
+  .status { font-weight: 700; padding: 14px; background: #edf7ed; }
+  .status.fail { background: #ffe9e9; color: #8e2020; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; background: #f1f3f8; }
+  #view { min-height: 90px; border: 1px solid #d8deec; padding: 18px; }
+  .spacer { height: 1400px; padding-top: 24px; color: #67718a; }
+</style>
+<body class="loaded">
+<main>
+  <h1>Epix Post history verification</h1>
+  <p id="source">Loading routing code...</p>
+  <p>Uses the real EpixPost router and EpixFrame message dispatcher. Only views and network requests are stubbed. Browser history and its Back/Forward events are native.</p>
+  <p><a href="?source=before">Load original source</a> · <a href="?source=after">Load fixed source</a></p>
+  <nav aria-label="Test routes">
+    <a href="?Home">Home</a>
+    <a href="?Hubs">Hubs</a>
+    <a href="?Users">Users</a>
+    <a href="?Settings">Settings</a>
+    <a href="?Profile/test-hub/alice.epix/Alice">Profile</a>
+    <a href="?Post/test-hub/alice.epix/7">Post</a>
+  </nav>
+  <div class="controls">
+    <button id="back">Browser Back</button>
+    <button id="forward">Browser Forward</button>
+    <button id="reset">Reset history state</button>
+    <button id="direct">Open Hubs without seeding initial state</button>
+  </div>
+  <p id="status" class="status" role="status">Preparing fixture</p>
+  <section id="view" aria-label="Current view"><h2 id="view-name">Feed</h2></section>
+  <pre id="details"></pre>
+  <ol>
+    <li>Reset, open Hubs without seeding initial state, then use Back. The view should return to Feed.</li>
+    <li>Open Hubs, then Users, go Back, then click Users again. The view and stored route should match.</li>
+    <li>Open Profile and Post, then use Back and Forward repeatedly.</li>
+    <li>Reset, click Home, then use Back. The feed should remain loaded and scrollable.</li>
+  </ol>
+  <div class="spacer">Scroll down before navigating to verify saved scroll positions.</div>
+  <p>End of scroll verification area.</p>
+</main>
+<script src="../js/lib/epixframe.js"></script>
+<script src="../js/utils/Deferred.js"></script>
+<script>
+  window.marked = { Renderer: class {} };
+</script>
+<script src="../js/utils/Text.js"></script>
+<script>
+(async function () {
+  const explicitSource = new URLSearchParams(location.search).get("source");
+  const before = explicitSource ? explicitSource === "before" : location.hash === "#before";
+  const suffix = before ? "#before" : "#after";
+  if (explicitSource) history.replaceState(null, "", location.pathname + suffix);
+  const sourcePath = before ? "../../EpixPost-before/js/EpixPost.js" : "../js/EpixPost.js";
+  const response = await fetch(sourcePath, { cache: "no-store" });
+  if (!response.ok) throw new Error("Could not load " + sourcePath);
+  const source = await response.text();
+  window.maquette = { h() {} };
+  window.$ = function () { return document.getElementById("view"); };
+  (0, eval)(source.replace("window.Page = new EpixPost();", "window.EpixPost = EpixPost;")
+    .replace("window.Page.createProjector();", "") + "\n//# sourceURL=" + sourcePath);
+  const page = window.Page = Object.create(EpixPost.prototype);
+  let rendered = "feed", lastEvent = "initial load", lastCommand = "none";
+  const routeView = query => {
+    const route = Text.queryParse(query).urls?.[0] || "";
+    return ({ Hubs: "hubs", Users: "users", Settings: "settings", Profile: "profile", Post: "thread" })[route] || "feed";
+  };
+  function report() {
+    const route = location.search.slice(1);
+    const expected = routeView(route);
+    const stored = page.history_state.url;
+    const stateMatches = stored === route || (!route && stored == null);
+    const loaded = document.body.classList.contains("loaded") && page.on_loaded.resolved;
+    const ok = rendered === expected && stateMatches && loaded;
+    const status = document.getElementById("status");
+    status.classList.toggle("fail", !ok);
+    status.textContent = (ok ? "PASS" : "FAIL") + ": expected " + expected + ", rendered " + rendered +
+      ", stored route " + JSON.stringify(stored) + ", loaded " + loaded;
+    document.getElementById("details").textContent = JSON.stringify({
+      source: before ? "original b4df249" : "working tree", browserURL: location.href,
+      browserState: history.state, appState: page.history_state, route: page.params,
+      rendered, bodyLoaded: document.body.classList.contains("loaded"),
+      deferredResolved: page.on_loaded.resolved, lastEvent, lastCommand
+    }, null, 2);
+  }
+  Object.assign(page, {
+    history_state: history.state || {}, params: {}, shell: {},
+    on_loaded: new Deferred(), on_user_info: new Deferred(),
+    log() {},
+    markLoaded() { document.body.classList.add("loaded"); requestAnimationFrame(report); },
+    cmd(command, params) {
+      lastCommand = command;
+      if (command === "wrapperPushState" || command === "wrapperReplaceState") {
+        const url = params[2] == null ? location.href : location.pathname + "?" + params[2] + suffix;
+        history[command === "wrapperPushState" ? "pushState" : "replaceState"](params[0], params[1], url);
+      }
+      requestAnimationFrame(report);
+    },
+    projector: {
+      detach() {},
+      replace(target, render) { render(); },
+      scheduleRender() { requestAnimationFrame(() => { page.content.render(); report(); }); }
+    }
+  });
+  page.on_user_info.resolve();
+  for (const name of ["feed", "hubs", "users", "settings", "profile", "thread", "create_profile"]) {
+    page["content_" + name] = {
+      render() {
+        rendered = name;
+        document.getElementById("view-name").textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        if (!page.on_loaded.resolved) page.on_loaded.resolve();
+      },
+      update() { page.projector.scheduleRender(); },
+      setUser(hub, address) { this.auth_address = address; return { filter() {} }; },
+      setPost() { return true; }
+    };
+  }
+  page.on_loaded.then(page.markLoaded);
+  page.route(location.search.slice(1));
+  if (location.search) page.history_state.url = location.search.slice(1);
+  document.getElementById("source").textContent = "Source: " + (before ? "original b4df249" : "fixed working tree");
+  // This is the current node wrapper's exact popstate message shape.
+  window.addEventListener("popstate", event => {
+    lastEvent = "native popstate";
+    page._onMessage({ data: { cmd: "wrapperPopState", params: { href: location.href, state: event.state } } });
+    requestAnimationFrame(report);
+  });
+  document.querySelectorAll("nav a").forEach(link => link.addEventListener("click", event => {
+    event.preventDefault();
+    lastEvent = "link " + link.textContent;
+    page.navigate(link.search);
+    report();
+  }));
+  document.getElementById("back").onclick = () => history.back();
+  document.getElementById("forward").onclick = () => history.forward();
+  document.getElementById("reset").onclick = () => {
+    history.replaceState(null, "", location.pathname + suffix);
+    page.history_state = {};
+    page.route("");
+    page.on_loaded.resolve();
+    document.body.classList.add("loaded");
+    lastEvent = "reset";
+    report();
+  };
+  document.getElementById("direct").onclick = () => {
+    lastEvent = "direct Hubs navigation";
+    page.setUrl("?Hubs");
+    report();
+  };
+  report();
+})().catch(error => {
+  document.getElementById("status").textContent = error.stack;
+  document.getElementById("status").classList.add("fail");
+});
+</script>
+</body>
+</html>
