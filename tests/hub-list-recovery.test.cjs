@@ -72,6 +72,7 @@ function page() {
     if (!(name in base) && !(name in globalThis)) base[name] = Stub;
   }
   const context = vm.createContext(base);
+  require("./helpers/removal-fixture.cjs")(context);
   vm.runInContext(source, context);
   const Page = base.window.Page;
   Page.params = { urls: [""] };

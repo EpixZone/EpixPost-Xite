@@ -62,6 +62,7 @@ function fixture() {
     setTimeout(fn, delay) { timers.set(++timerId, {fn, due:elapsed + delay}); return timerId; },
     clearTimeout(id) { timers.delete(id); },
     Text: {fileEncode: (value) => Buffer.from(JSON.stringify(value)).toString("base64")}};
+  require("./helpers/removal-fixture.cjs")(context);
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js/utils/HubCommunity.js"), "utf8"), context);
   const community = context.window.HubCommunity;
   function take(cmd) {

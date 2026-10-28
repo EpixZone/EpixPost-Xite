@@ -15,6 +15,7 @@ function fixture() {
     Page: null,
   });
   for (const file of ["utils/Deferred.js", "User.js", "AnonUser.js"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", file), "utf8"), context);
     Object.assign(context, context.window);
   }

@@ -421,6 +421,10 @@
     }
 
     enqueue(address, fields, deleted, cb) {
+      if (!PostRemoval.allowed(address)) {
+        if (cb) cb(error(PostRemoval.message(PostRemoval.check(address))));
+        return;
+      }
       var identity = this.currentIdentity();
       var user = Page.user;
       var signer = normalizeAddress(Page.site_info && Page.site_info.auth_address);
@@ -431,7 +435,7 @@
       var defaults = Page.site_info && Page.site_info.content && Page.site_info.content.settings && Page.site_info.content.settings.default_hubs || {};
       var candidates = Object.keys(defaults).concat([user.hub]);
       var source = candidates.find(function(hub) {
-        return normalizeAddress(hub) && Page.user_hubs && Page.user_hubs[hub] && Page.merged_sites && Page.merged_sites[hub];
+        return normalizeAddress(hub) && PostRemoval.allowed(hub) && Page.user_hubs && Page.user_hubs[hub] && Page.merged_sites && Page.merged_sites[hub];
       });
       if (!source) {
         if (cb) cb(error("Join a hub before publishing a review. No hubs will be downloaded automatically."));
@@ -468,6 +472,10 @@
         Page.user_hubs && Page.user_hubs[job.source] && Page.merged_sites && Page.merged_sites[job.source];
       var guard = () => {
         if (finished) return false;
+        if (!PostRemoval.allowed(job.address) || !PostRemoval.allowed(job.source)) {
+          done(error("The hub is unavailable under the current removal policy."));
+          return false;
+        }
         if (current()) return true;
         done(error("Your identity or joined hubs changed. The review was not published."));
         return false;

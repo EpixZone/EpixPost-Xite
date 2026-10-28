@@ -133,6 +133,7 @@
         where += "AND json.site = :feed_hub ";
         param.feed_hub = feed_hub;
       }
+      where += "AND " + PostRemoval.sqlScope("json.site") + " ";
       var query = "SELECT * FROM post LEFT JOIN json ON (post.json_id = json.json_id) " + where + " ORDER BY date_added DESC LIMIT " + (this.limit + 1);
       this.logStart("Update");
       queries.run([query, param], (rows) => {

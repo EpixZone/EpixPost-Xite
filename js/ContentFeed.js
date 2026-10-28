@@ -45,7 +45,7 @@
       if (!feed_hub) {
         return null;
       }
-      if (!Page.merged_sites || !Page.merged_sites[feed_hub]) {
+      if (!PostRemoval.allowed(feed_hub) || !Page.merged_sites || !Page.merged_sites[feed_hub]) {
         return null;
       }
       return feed_hub;
@@ -71,7 +71,7 @@
       menu.addItem(_("All hubs"), (() => {
         return this.selectFeedHub(null);
       }), !selected);
-      var addresses = Object.keys(Page.merged_sites || {});
+      var addresses = Object.keys(Page.merged_sites || {}).filter((address) => PostRemoval.allowed(address));
       for (var i = 0; i < addresses.length; i++) {
         menu.addItem(this.getHubTitle(addresses[i]), ((address) => {
           return () => {
@@ -85,6 +85,7 @@
     }
 
     selectFeedHub(address) {
+      if (address && !PostRemoval.notify(address)) return false;
       if (address) {
         Page.local_storage.settings.feed_hub = address;
       } else {

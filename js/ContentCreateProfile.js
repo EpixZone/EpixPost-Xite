@@ -26,6 +26,7 @@
 
     handleJoinClick(e) {
       var hub_address = e.target.attributes.address.value;
+      if (!PostRemoval.notify(hub_address)) return false;
       if (Page.user != null ? Page.user.hub : void 0) {
         var hub_name;
         var ref1 = (() => {
@@ -114,6 +115,7 @@
     }
 
     renderHub(hub) {
+      if (!PostRemoval.allowed(hub.address)) return PostRemoval.render(hub.address);
       var rendered = 0;
       return h("div.hub.card", {
         key: hub.address + hub.type,

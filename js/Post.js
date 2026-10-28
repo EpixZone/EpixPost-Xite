@@ -417,7 +417,7 @@
     // reachable through a reply cycle get promoted to top level too.
     buildCommentTree() {
       var comment, comments, i, parent_uri, uri;
-      comments = this.row.comments || [];
+      comments = (this.row.comments || []).filter((comment) => PostRemoval.allowedRow(comment));
       var sorted = comments.slice().sort(function(a, b) {
         return a.date_added - b.date_added;
       });
@@ -649,6 +649,7 @@
     // comment's focus view), nested (one level deep in thread view),
     // connector (ancestor chain), focused (highlighted target comment).
     renderComment(comment, tree, opts) {
+      if (!PostRemoval.allowedRow(comment)) return null;
       if (opts == null) {
         opts = {};
       }
@@ -1045,6 +1046,7 @@
     }
 
     render() {
+      if (!PostRemoval.allowedRow(this.row)) return null;
       var ref;
       var noanim = this.isNoanim();
       var thread_mode = this.isThreadMode();

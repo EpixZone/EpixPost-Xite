@@ -164,3 +164,39 @@ signing. Keep database schema `version` at `3`, which selects merger semantics.
 The new `hub_review` table is added on rebuild; existing posts, profiles, follows,
 and hub announcements use their existing tables. No production signing keys or
 user content belong in this repository.
+
+### Adopted removal policy
+
+Hub removals are separate from community reports, Adult/Mature classifications,
+user filters, and voluntary unseeding. A report cannot remove a hub by itself.
+The app owner adopts a removal snapshot through `content.json` settings; the
+node-verified owner manifest pins its checkpoint. `RemovalRegistry.js` validates
+the complete snapshot and `RemovalPolicy.js` handles loading and rollback state.
+Owner-maintained removals have no per-user "Download anyway" override.
+
+Removed hub cards and review panels show a hashed removal key and bounded reason
+instead of the address, title, description, avatars, evidence notes or copy links.
+Hub additions, profile creation, announcements, merged writes, signing and
+publication check the policy. Incoming and cached feeds, profiles, threads,
+settings and hub discovery suppress removed targets. Ordinary personal filtering
+continues to offer its existing explicit override for hubs that policy allows.
+Missing or invalid verification holds new actions and shows a retry control.
+Removed cards retain a non-identifying Stop seeding action.
+
+When an author next saves their own profile, obsolete announcements of known
+removed hubs are omitted from that new version. Other authors' signed records
+are not rewritten. Existing replicas, browser history and previous public
+addresses remain outside this UI guarantee. Hashes allow someone who already
+knows a candidate address to test it; they do not make historical addresses secret.
+These are application policy gates, not a network-wide ban or a way to force
+other nodes to delete copies. App-managed node notification queries are refreshed
+while this application is running; already-delivered notifications are not erased.
+
+Owner deployment must include the shared scripts, `removals.json`, and the matching
+checkpoint in the signed app manifest. Updating a snapshot requires publishing
+its new owner-pinned checkpoint together with the snapshot. Individual reports
+and user-authored hub data never supply policy authority. Clones must deliberately
+adopt and sign their own owner policy configuration.
+
+See [removal policy operations](docs/removals.md) for snapshot updates, checkpoint
+publication, recovery, and the limits of hashed-address privacy.

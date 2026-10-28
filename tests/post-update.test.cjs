@@ -68,6 +68,7 @@ function fixture() {
     }
   });
   for (const name of ["lib/maquette", "lib/clone", "utils/Animation", "utils/Autosize", "Post", "ActivityList"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", name + ".js"), "utf8"), context);
     const exported = name.split("/").pop();
     if (context.window[exported]) context[exported] = context.window[exported];

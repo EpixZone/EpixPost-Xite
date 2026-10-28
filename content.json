@@ -572,8 +572,8 @@
  "inner_path": "content.json",
  "modified": 1790399304,
  "order_policy": {
-  "first_paint": ["index.html","img/favicon.ico","css/all.css","js/lib/maquette.js","js/lib/anime.min.js","js/lib/marked.min.js","js/lib/clone.js","js/lib/epixframe.js","js/utils/LogMixin.js","js/utils/Deferred.js","js/utils/Dollar.js","js/utils/Prototypes.js","js/utils/RateLimit.js","js/utils/Animation.js","js/utils/Time.js","js/utils/Translate.js","js/utils/Debug.js","js/utils/Text.js","js/utils/Autosize.js","js/utils/Editable.js","js/utils/ImagePreview.js","js/utils/ItemList.js","js/utils/Maxheight.js","js/utils/Menu.js","js/utils/Overlay.js","js/utils/Scrollwatcher.js","js/utils/Uploadable.js","js/utils/HubActions.js","js/AnonUser.js","js/User.js","js/UserList.js","js/PostMeta.js","js/PostCreate.js","js/ComposerModal.js","js/Post.js","js/PostList.js","js/ActivityList.js","js/Shell.js","js/Onboarding.js","js/ContentCreateProfile.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentThread.js","js/ContentUsers.js","js/ContentHubs.js","js/ContentSettings.js","js/EpixPost.js"],
-  "prefetch": ["dbschema.json"]
+  "first_paint": ["index.html","img/favicon.ico","css/all.css","js/lib/maquette.js","js/lib/anime.min.js","js/lib/marked.min.js","js/lib/clone.js","js/lib/epixframe.js","js/utils/LogMixin.js","js/utils/Deferred.js","js/utils/QueryRows.js","js/utils/Dollar.js","js/utils/Prototypes.js","js/utils/RateLimit.js","js/utils/Animation.js","js/utils/Time.js","js/utils/Translate.js","js/utils/Debug.js","js/utils/Text.js","js/utils/Autosize.js","js/utils/Editable.js","js/utils/ImagePreview.js","js/utils/ItemList.js","js/utils/Maxheight.js","js/utils/Menu.js","js/utils/Overlay.js","js/utils/Scrollwatcher.js","js/utils/Uploadable.js","js/utils/RemovalRegistry.js","js/utils/RemovalPolicy.js","js/utils/PostRemoval.js","js/utils/HubActions.js","js/AnonUser.js","js/User.js","js/UserList.js","js/utils/ImageDownload.js","js/PostMeta.js","js/PostCreate.js","js/ComposerModal.js","js/Post.js","js/PostList.js","js/ActivityList.js","js/Shell.js","js/Onboarding.js","js/ContentCreateProfile.js","js/ContentFeed.js","js/ContentProfile.js","js/ContentThread.js","js/ContentUsers.js","js/utils/HubCommunity.js","js/HubCommunityView.js","js/ContentHubs.js","js/ContentSettings.js","js/EpixPost.js"],
+  "prefetch": ["dbschema.json","removals.json"]
  },
  "postmessage_nonce_security": true,
  "settings": {
@@ -581,6 +581,20 @@
    "epix12fdtj0j77kltvdw2eqfzw392mr34r2al22mqrf": {
     "description": "Epix Post Hub",
     "title": "Epix Post Hub"
+   }
+  },
+  "removals": {
+   "policyId": "epix-xite-removal-v1",
+   "snapshot": "removals.json",
+   "checkpoint": {
+    "treeFormat": "epix-removal-merkle-v1",
+    "policyId": "epix-xite-removal-v1",
+    "authority": "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm",
+    "root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sequence": 1,
+    "entryCount": 0,
+    "issuedAt": 1793218770,
+    "expiresAt": 0
    }
   }
  },

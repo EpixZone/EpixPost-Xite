@@ -14,6 +14,7 @@
       if (cb == null) {
         cb = null;
       }
+      if (!PostRemoval.notify(hub)) { if (cb) cb(false); return; }
       var user = new User({
         hub: hub,
         auth_address: Page.site_info.auth_address
@@ -38,7 +39,8 @@
         if (on_status) {
           on_status(_("Creating new profile..."));
         }
-        user.save(data, hub, function() {
+        user.save(data, hub, null, function(result) {
+          if (result !== "ok") { if (cb) cb(false); return; }
           Page.checkUser();
           if (typeof cb === "function") {
             cb(true);

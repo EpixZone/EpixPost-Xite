@@ -47,6 +47,7 @@
 
     handleHubSelect(e) {
       var hub = e.currentTarget.attributes.hub.value;
+      if (!PostRemoval.notify(hub)) return false;
       Page.local_storage.settings.hub = hub;
       Page.saveLocalStorage();
       Page.checkUser();
@@ -109,6 +110,7 @@
     }
 
     renderHubRow(address, checked, enabled) {
+      if (!PostRemoval.allowed(address)) return PostRemoval.render(address, "div.settings-row");
       return h("a.settings-row", {
         key: "hub-" + address,
         href: "#Use+hub",
