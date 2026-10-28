@@ -84,6 +84,7 @@
       if (feed_hub) {
         where += "AND json.site = :feed_hub ";
       }
+      where += "AND " + PostRemoval.sqlScope("json.site") + " ";
       var query = "SELECT\n 'comment' AS type, json.*,\n json.site || \"/\" || post_uri AS subject, body, date_added,\n NULL AS subject_auth_address, NULL AS subject_hub, NULL AS subject_user_name\nFROM\n json\nLEFT JOIN comment USING (json_id)\n " + where + "\n\nUNION ALL\n\nSELECT\n 'post_like' AS type, json.*,\n json.site || \"/\" || post_uri AS subject, '' AS body, date_added,\n NULL AS subject_auth_address, NULL AS subject_hub, NULL AS subject_user_name\nFROM\n json\nLEFT JOIN post_like USING (json_id)\n " + where;
       if (this.directories !== "all") {
         query += "UNION ALL\n\nSELECT\n 'follow' AS type, json.*,\n follow.hub || \"/\" || follow.auth_address AS subject, '' AS body, date_added,\n follow.auth_address AS subject_auth_address, follow.hub AS subject_hub, follow.user_name AS subject_user_name\nFROM\n json\nLEFT JOIN follow USING (json_id)\n " + where;
@@ -164,6 +165,8 @@
     }
 
     renderActivity(activity_group) {
+      activity_group = activity_group.filter((item) => PostRemoval.allowedRow(item) && PostRemoval.allowedRow(item.subject));
+      if (!activity_group.length) return [];
       var back = [];
       var now = Time.timestamp();
       var activity = activity_group[0];

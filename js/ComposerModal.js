@@ -136,6 +136,7 @@
     }
 
     handleHubChange(e) {
+      if (!PostRemoval.notify(e.target.value)) return;
       this.selected_hub = e.target.value;
       Page.projector.scheduleRender();
     }
@@ -159,6 +160,7 @@
     }
 
     handlePostSubmit() {
+      if (!PostRemoval.notify(this.selected_hub || (Page.user && Page.user.hub))) return false;
       if (this.submitting) {
         return false;
       }
@@ -198,7 +200,7 @@
     }
 
     renderHubSelect() {
-      var hubs = Object.keys(Page.user_hubs || {});
+      var hubs = Object.keys(Page.user_hubs || {}).filter((address) => PostRemoval.allowed(address));
       if (hubs.length <= 1) {
         return void 0;
       }

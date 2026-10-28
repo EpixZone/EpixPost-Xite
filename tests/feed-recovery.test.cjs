@@ -42,6 +42,7 @@ function fixture({ deferProfiles = false } = {}) {
     },
   });
   for (const name of ["utils/Deferred", "utils/ItemList", "utils/QueryRows", "PostList", "ActivityList"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(root, "js", name + ".js"), "utf8"), context);
     const exported = name.split("/").pop();
     context[exported] = context.window[exported];

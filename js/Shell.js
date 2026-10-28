@@ -8,6 +8,7 @@
       this.handleAccountTopClick = this.handleAccountTopClick.bind(this);
       this.handleComposeClick = this.handleComposeClick.bind(this);
       this.saveFollows = this.saveFollows.bind(this);
+      this.refreshRemovalFeeds = this.refreshRemovalFeeds.bind(this);
       this.setTitle = this.setTitle.bind(this);
       this.renderNavItem = this.renderNavItem.bind(this);
       this.render = this.render.bind(this);
@@ -122,10 +123,24 @@
 
     // Newsfeed follow queries. (Moved from the old Head.js; the Settings page
     // toggles this.follows and calls this to persist.)
+    // Re-scope persisted subscriptions even when the removed hub held the
+    // user's only profile. Preserve their definitions and per-post follows.
+    refreshRemovalFeeds() {
+      var generation = this.removal_feed_generation = (this.removal_feed_generation || 0) + 1;
+      Page.cmd("feedListFollow", [], (feeds) => {
+        if (generation !== this.removal_feed_generation) return;
+        var current = feeds && typeof feeds === "object" && !Array.isArray(feeds) && !feeds.error ? feeds : {};
+        // cmd applies the current policy to every query. If the existing
+        // subscription state cannot be read, do not retain an unsafe old scope.
+        Page.cmd("feedFollow", [current]);
+      });
+    }
+
     saveFollows() {
       if (!Page.user || !Page.user.row) {
         return;
       }
+      this.removal_feed_generation = (this.removal_feed_generation || 0) + 1;
       var out = {};
       // feedFollow replaces the whole follow dict: keep the per-post follows
       // (managed from the post kebab menu) when the master toggles change.
@@ -285,6 +300,7 @@
         return void 0;
       }
       var sync = Page.hub_sync;
+      if (!PostRemoval.allowed(sync.address)) return void 0;
       var pct = sync.total > 0 ? Math.round(((sync.total - (sync.tasks || 0)) / sync.total) * 100) : null;
       // Before the first file there is nothing to count: the node is still
       // dialing the hub's peers (tens of seconds over Tor). Say that, rather
@@ -334,6 +350,7 @@
           onclick: this.handleComposeClick
         }, h("span.icon.icon-compose")),
         this.composer.render(),
+        PostRemoval.renderStatus(),
         this.renderHubSync()
       ]);
     }

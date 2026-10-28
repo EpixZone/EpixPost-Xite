@@ -30,6 +30,7 @@ function setup() {
     }
   });
   for (const file of ['js/utils/HubCommunity.js','js/HubCommunityView.js','js/ContentHubs.js','js/ContentCreateProfile.js','js/Onboarding.js']) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'), context);
     Object.assign(context, context.window);
   }

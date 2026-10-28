@@ -72,6 +72,7 @@
     }
 
     getHubTitle(address) {
+      if (!PostRemoval.allowed(address)) return _("Hub unavailable under removal policy");
       for (var i = 0; i < this.hubs.length; i++) {
         var hub = this.hubs[i];
         if (hub.address === address && hub.content && hub.content.title) {
@@ -88,10 +89,11 @@
     }
 
     canDownload(address) {
-      return this.community.canDownload(address);
+      return PostRemoval.allowed(address) && this.community.canDownload(address);
     }
 
     downloadHub(address) {
+      if (!PostRemoval.notify(address)) return;
       if (!this.canDownload(address)) {
         Page.cmd("wrapperNotification", ["info", _("Review this hub and your filters before downloading.")]);
         return;
@@ -129,6 +131,7 @@
 
     handleJoinClick(e) {
       var hub = e.currentTarget.attributes.address.value;
+      if (!PostRemoval.notify(hub)) return false;
       if (!(Page.site_info != null ? Page.site_info.cert_user_id : void 0)) {
         return Page.shell.handleSelectUserClick();
       }
@@ -146,6 +149,7 @@
     }
 
     joinHub(hub) {
+      if (!PostRemoval.notify(hub)) return;
       this.joining[hub] = true;
       Page.projector.scheduleRender();
       HubActions.joinHub(hub, null, (ok) => {
@@ -188,6 +192,7 @@
 
     handleCopyClick(e) {
       var address = e.currentTarget.attributes.address.value;
+      if (!PostRemoval.notify(address)) return false;
       var notify = function() {
         Page.cmd("wrapperNotification", ["done", _("Address copied"), 3000]);
       };
@@ -232,6 +237,11 @@
         Page.cmd("wrapperNotification", ["error", _("Invalid hub address (should start with epix1)")]);
         return false;
       }
+      if (!PostRemoval.notify(address)) {
+        this.add_value = "";
+        Page.projector.scheduleRender();
+        return false;
+      }
       if (Page.merged_sites[address]) {
         Page.cmd("wrapperNotification", ["info", _("You already seed this hub")]);
         return false;
@@ -252,7 +262,7 @@
       var ref, ref1;
       var default_hubs = ((ref = Page.site_info.content) != null ? (ref1 = ref.settings) != null ? ref1.default_hubs : void 0 : void 0) || {};
       for (var address in default_hubs) {
-        return address;
+        if (PostRemoval.allowed(address)) return address;
       }
       return null;
     }
@@ -352,6 +362,7 @@
     // with the stored key, create the user's profile there and announce it.
     // Idempotent, so an interrupted run can be resumed on the same address.
     finishHubSetup(address) {
+      if (!PostRemoval.notify(address)) return;
       var ref;
       var pending = (((ref = Page.local_storage) != null ? ref.pending_hub : void 0)) || {};
       this.creating = true;
@@ -359,7 +370,11 @@
       var inner_path = "merged-EpixPost/" + address + "/content.json";
       // Idempotent: registers the (already served) clone as a merged site and
       // triggers the merger db rebuild + siteInfo push.
-      Page.cmd("mergerSiteAdd", [address], () => {
+      Page.cmd("mergerSiteAdd", [address], (added) => {
+        if (added !== "ok" && added !== true) {
+          this.failHubSetup(added && added.error);
+          return;
+        }
         this.getMergedContent(address, 0, (content) => {
           if (!content) {
             this.failHubSetup(_("Not an Epix Post hub"));
@@ -382,12 +397,15 @@
                 this.failHubSetup((res_sign != null ? res_sign.error : void 0) || res_sign);
                 return;
               }
-              Page.cmd("sitePublish", {inner_path: inner_path}, () => {
+              Page.cmd("sitePublish", {inner_path: inner_path}, (published) => {
+                if (published !== "ok") { this.failHubSetup(published && published.error); return; }
                 this.admin_xids[address] = content.admin_xid;
                 this.setCreateStatus(_("Creating your profile on the new hub..."));
-                this.joinNewHub(address, () => {
+                this.joinNewHub(address, (joined) => {
+                  if (!joined) { this.failHubSetup(_("Profile creation was not published.")); return; }
                   this.setCreateStatus(_("Announcing your hub..."));
-                  Page.user.announceHub(address, content.title, content.description || "", () => {
+                  Page.user.announceHub(address, content.title, content.description || "", (announced) => {
+                    if (announced !== "ok") { this.failHubSetup(announced && announced.error); return; }
                     delete Page.local_storage.pending_hub;
                     Page.saveLocalStorage();
                     this.creating = false;
@@ -438,6 +456,7 @@
     // Create the user's profile on the new hub, skipping the join when it
     // already exists (resumed setup) to avoid HubActions' error notification.
     joinNewHub(address, cb) {
+      if (!PostRemoval.notify(address)) { cb(false); return; }
       if (Page.user_hubs && Page.user_hubs[address]) {
         cb(true);
         return;
@@ -480,7 +499,7 @@
         var candidates = [];
         for (var address in sites) {
           var site = sites[address];
-          if (!site || !site.settings || !site.settings.own) {
+          if (!PostRemoval.allowed(address) || !site || !site.settings || !site.settings.own) {
             continue;
           }
           if (this.isDefault(address) || this.resume_attempted[address]) {
@@ -516,6 +535,7 @@
     // The admin_xid of a merged site, from the siteInfo content summary when
     // it carries the key, else from the hub's own content.json.
     getAdminXidAsync(site, cb) {
+      if (!PostRemoval.allowed(site.address)) { cb(null); return; }
       if (site.content && typeof site.content.admin_xid === "string") {
         this.admin_xids[site.address] = site.content.admin_xid;
         cb(site.content.admin_xid);
@@ -627,13 +647,13 @@
 
     // Discovery reads only metadata already in the local merger database.
     updateDiscover(sites, generation) {
-      Page.cmd("dbQuery", "SELECT hub_announce.*, json.directory, json.cert_user_id FROM hub_announce LEFT JOIN json USING (json_id) ORDER BY date_added DESC", (rows) => {
+      Page.cmd("dbQuery", "SELECT hub_announce.*, json.directory, json.cert_user_id, json.site FROM hub_announce LEFT JOIN json USING (json_id) ORDER BY date_added DESC", (rows) => {
         if (generation !== this.refresh_generation) return;
         var discover = [];
         var seen = new Set(this.default_hubs.map((hub) => hub.address));
         (Array.isArray(rows) ? rows : []).concat(Object.values(this.manual_hubs)).forEach((row) => {
           var address = HubCommunity.normalizeAddress(row.address);
-          if (!address || seen.has(address) || sites[address] || address === Page.address) return;
+          if (!address || !PostRemoval.allowedRow(row) || seen.has(address) || sites[address] || address === Page.address) return;
           seen.add(address);
           discover.push(Object.assign({}, row, {address: address}));
         });
@@ -643,6 +663,7 @@
     }
 
     renderHub(hub) {
+      if (!PostRemoval.allowed(hub.address)) return PostRemoval.render(hub.address);
       var rendered = 0;
       var address = hub.address;
       var seeded = hub.type === "seeded";
@@ -733,6 +754,7 @@
     // the announcer's directory matches the hub's declared admin_xid.
     renderDiscoverHub(row) {
       var address = row.address;
+      if (!PostRemoval.allowed(address)) return PostRemoval.render(address);
       var announcer = (row.directory || "").replace(/^data\/users\//, "");
       var admin = this.admin_xids[address];
       var verified = admin != null && admin !== "" && admin === announcer;
@@ -855,6 +877,7 @@
       return h("div#Content.center.content-hubs", [
         h("h1", _("Hubs")),
         h("div.hubs-note", _("Hubs store profiles and posts. Choose a hub before downloading its content.")),
+        PostRemoval.renderStatus(),
         this.community.renderFilters(),
         this.renderCreateHubButton(),
         this.hub_error ? h("p.hub-community-error", {key: "hub-error", role: "alert"}, [this.hub_error, " ", h("button.button.button-small", {type: "button", onclick: this.update}, _("Retry"))]) : void 0,

@@ -93,6 +93,10 @@
     }
 
     render() {
+      if (this.hub && !PostRemoval.allowed(this.hub)) {
+        if (!Page.on_loaded.resolved) Page.on_loaded.resolve();
+        return h("div#Content.center.content-thread", [PostRemoval.render(this.hub)]);
+      }
       if (this.need_update) {
         this.log("Updating", this.hub, this.auth_address, this.post_id, this.focus_uri);
         this.need_update = false;

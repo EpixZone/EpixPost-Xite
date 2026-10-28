@@ -1,0 +1,14 @@
+{
+ "version": 1,
+ "checkpoint": {
+  "treeFormat": "epix-removal-merkle-v1",
+  "policyId": "epix-xite-removal-v1",
+  "authority": "epix1p0stmcza0xjkvv0vnjlk0ypr7xsunt4lxkhgcm",
+  "root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sequence": 1,
+  "entryCount": 0,
+  "issuedAt": 1793218770,
+  "expiresAt": 0
+ },
+ "records": []
+}

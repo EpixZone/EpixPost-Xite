@@ -14,5 +14,6 @@ jobs:
       - name: Check JavaScript and run regressions
         run: |
           node --version
-          for file in js/*.js js/utils/*.js; do node --check "$file"; done
+          for file in js/*.js js/utils/*.js scripts/*.cjs; do node --check "$file"; done
           node --test tests/*.test.cjs
+          node scripts/removals.cjs verify

@@ -23,6 +23,7 @@ function fixture() {
     RateLimit(delay, cb) { cb(); },
     console,
   });
+  require("./helpers/removal-fixture.cjs")(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../js/utils/Deferred.js"), "utf8"), context);
   context.Deferred = context.window.Deferred;
   let source = fs.readFileSync(path.join(__dirname, "../js/EpixPost.js"), "utf8");

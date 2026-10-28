@@ -192,7 +192,7 @@
         this.content_settings.need_update = true;
       } else if (this.params.urls[0] === "ProfileName") {
         this.content_profile.findUser(this.params.urls[1], (user) => {
-          this.setUrl(user.getLink(), "replace");
+          this.setUrl(user ? user.getLink() : "?Hubs", "replace");
         });
       } else if (this.params.urls[0] === "Profile") {
         content = this.content_profile;
@@ -391,6 +391,7 @@
         on_site_info.then(() => {
           // Featured hubs are suggestions. Only an explicit user action may
           // download one, after its community labels and filters are checked.
+          if (this.shell && typeof this.shell.refreshRemovalFeeds === "function") this.shell.refreshRemovalFeeds();
           if (typeof cb === "function") cb(true);
         });
       });
@@ -447,6 +448,44 @@
         cb = params;
         params = undefined;
       }
+      // Check every local write/publish boundary again: the policy can change
+      // while a profile, review, or hub setup waits for an earlier response.
+      var protected_commands = ["fileWrite", "siteSign", "sitePublish", "fileNeed", "optionalFilePin", "optionalFileDownload", "bigfileUploadInit"];
+      var target = protected_commands.indexOf(command) >= 0 ? PostRemoval.mergedTarget(params) : null;
+      if (command === "OptionalHelp") target = Array.isArray(params) ? params[2] : params && params.address;
+      if (command === "siteClone") target = typeof params === "string" ? params : Array.isArray(params) ? params[0] : params && params.address;
+      if (target && !PostRemoval.allowed(target)) {
+        var blocked = {error: PostRemoval.message(PostRemoval.check(target)), removal_status: PostRemoval.check(target).status};
+        if (typeof cb === "function") { cb(blocked); return; }
+        return Promise.reject(blocked);
+      }
+      if (command === "feedFollow") {
+        var feeds = Array.isArray(params) ? params[0] : params;
+        var allowed_hubs = Object.keys(this.merged_sites || {}).filter((hub) => /^epix1[a-z0-9]+$/.test(hub) && PostRemoval.allowed(hub));
+        var visible_urls = allowed_hubs.map((hub) => "url LIKE '?Post/" + hub + "/%' OR url LIKE '?Profile/" + hub + "/%'").join(" OR ") || "0";
+        var safe_feeds = {};
+        Object.keys(feeds || {}).forEach((name) => {
+          var feed = feeds[name];
+          if (Array.isArray(feed) && typeof feed[0] === "string") {
+            var query = feed[0];
+            var prefix = "/* epix-removal-feed-v1 */ SELECT * FROM (";
+            var suffix = ") AS epix_removal_feed WHERE ";
+            if (query.startsWith(prefix) && query.lastIndexOf(suffix) >= prefix.length) {
+              query = query.slice(prefix.length, query.lastIndexOf(suffix));
+            }
+            safe_feeds[name] = [prefix + query + suffix + visible_urls, feed[1]];
+          }
+        });
+        return super.cmd(command, [safe_feeds], cb);
+      }
+      if (command === "dbQuery") {
+        var filter = (rows) => Array.isArray(rows) ? rows.filter((row) => PostRemoval.allowedRow(row)) : rows;
+        if (typeof cb === "function") return super.cmd(command, params, (rows) => cb(filter(rows)));
+        return new Promise((resolve, reject) => super.cmd(command, params, (rows) => {
+          if (rows && rows.error) reject(rows);
+          else resolve(filter(rows));
+        }));
+      }
       if (command === "mergerSiteDelete") {
         var removed = typeof params === "string" ? params : Array.isArray(params) ? params[0] : params && params.address;
         var removed_entry = this.hub_adds.get(removed);
@@ -480,6 +519,11 @@
         return;
       }
       addresses = Array.from(new Set(addresses));
+      var denied = addresses.map((address) => PostRemoval.check(address)).find((decision) => decision.status !== "allowed");
+      if (denied) {
+        cb({error: PostRemoval.message(denied), removal_status: denied.status});
+        return;
+      }
       if (this.content_hubs && typeof this.content_hubs.canDownload === "function"
           && addresses.some((address) => this.content_hubs.canDownload(address) === false)) {
         cb({ error: _("Review this hub and your filters on the Hubs page before downloading.") });
@@ -692,6 +736,7 @@
     // Canonical hub title: the seeded hub's own signed title, else the
     // featured-hub entry in our content.json, else a truncated address.
     getHubTitle(address) {
+      if (!PostRemoval.allowed(address)) return _("Hub unavailable under removal policy");
       var ref, ref1, ref2, ref3;
       var site = this.merged_sites != null ? this.merged_sites[address] : void 0;
       if (site && site.content && site.content.title) {
@@ -889,9 +934,9 @@
       var settings = (this.local_storage && this.local_storage.settings) || {};
       var removed = settings.removed_hubs || {};
       var chosen = settings.hub;
-      if (chosen && this.merged_sites[chosen] && !removed[chosen]) default_hub = chosen;
+      if (chosen && PostRemoval.allowed(chosen) && this.merged_sites[chosen] && !removed[chosen]) default_hub = chosen;
       for (var address in ref) {
-        if (!default_hub && this.merged_sites[address] && !removed[address]) default_hub = address;
+        if (!default_hub && PostRemoval.allowed(address) && this.merged_sites[address] && !removed[address]) default_hub = address;
       }
       if (!default_hub) {
         this.log("Choose and download a hub before creating a profile");
@@ -1186,6 +1231,7 @@
         }
         if (full) {
           this.site_info = site_info;
+          this.configureRemovalPolicy(site_info);
         }
         var has_permission = full ? site_info.settings.permissions.indexOf("Merger:EpixPost") >= 0 : false;
         if (!had_permission && has_permission) {
@@ -1234,6 +1280,25 @@
           RateLimit(site_info.bad_files > 0 ? 2000 : 500, this.updateContentNoanim);
         }
       }
+    }
+
+    configureRemovalPolicy(site_info) {
+      if (!window.RemovalPolicy) return;
+      var generation = this.removal_generation = (this.removal_generation || 0) + 1;
+      window.RemovalPolicy.configure(site_info).then(() => {
+        if (generation !== this.removal_generation) return;
+        this.hub_adds.forEach((entry) => {
+          if (!PostRemoval.allowed(entry.address) && this.isHubDownloadActive(entry)) {
+            this.finishHubDownload(entry, "error", PostRemoval.message(PostRemoval.check(entry.address)));
+          }
+        });
+        if (this.shell && typeof this.shell.refreshRemovalFeeds === "function") this.shell.refreshRemovalFeeds();
+        if (this.local_storage && this.site_info) this.checkUser();
+        if (this.content) this.content.update();
+        if (this.projector) this.projector.scheduleRender();
+      }).catch(() => {
+        if (this.projector) this.projector.scheduleRender();
+      });
     }
 
     setServerInfo(server_info) {

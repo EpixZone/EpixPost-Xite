@@ -347,6 +347,14 @@
     }
 
     renderAvatar(attrs) {
+      if (this.hub && !PostRemoval.allowed(this.hub)) {
+        // Callers may pass profile links and identifying titles. Clear those
+        // attributes as well as the image when a previously visible hub changes.
+        attrs = attrs || {};
+        Object.keys(attrs).forEach((key) => delete attrs[key]);
+        attrs.style = "background-image: url('img/default-avatar.svg')";
+        return h("span.avatar", attrs);
+      }
       var avatar_url, ref, ref1, ref2, ref3, ref4, ref5;
       if (attrs == null) {
         attrs = {};
@@ -380,6 +388,18 @@
         cb = null;
       }
       if (isCurrent && !isCurrent()) return;
+      var reject = () => {
+        var failure = {error: _("The hub is unavailable under the current removal policy.")};
+        if (cb) cb(failure);
+        if (cb_published) cb_published(failure);
+      };
+      if (!PostRemoval.allowed(site) || (data.hub && !PostRemoval.allowed(data.hub))) { reject(); return; }
+      if (Array.isArray(data.hub_announce)) {
+        // This is the selected author's next signed profile version. Do not
+        // re-announce targets that are now removed when saving other fields.
+        data = Object.assign({}, data, {hub_announce: data.hub_announce.filter((row) => PostRemoval.check(row.address).status !== "removed")});
+        if (data.hub_announce.some((row) => !PostRemoval.allowed(row.address))) { reject(); return; }
+      }
       var inner_path = this.getPath(site) + "/data.json";
       return Page.cmd("fileWrite", [inner_path, Text.fileEncode(data)], (res_write) => {
         if (isCurrent && !isCurrent()) return;
@@ -388,6 +408,11 @@
           cb(res_write);
         }
         if (isCurrent && !isCurrent()) return;
+        if (res_write !== "ok") { if (cb_published) cb_published(res_write); return; }
+        if (!PostRemoval.allowed(site) || (data.hub_announce || []).some((row) => !PostRemoval.allowed(row.address))) {
+          if (cb_published) cb_published({error: _("The removal policy changed before publication. Save again after verification.")});
+          return;
+        }
         return Page.cmd("sitePublish", {
           "inner_path": inner_path
         }, (res_sign) => {
@@ -697,6 +722,10 @@
     // has a profile there (widest audience), otherwise on the user's active
     // hub. One entry per hub address: announcing again replaces the old one.
     announceHub(hub_address, title, description, cb) {
+      if (!PostRemoval.allowed(hub_address)) {
+        if (cb) cb({error: PostRemoval.message(PostRemoval.check(hub_address))});
+        return;
+      }
       if (cb == null) {
         cb = null;
       }
@@ -704,7 +733,7 @@
       var ref, ref1, ref2;
       var default_hubs = ((ref = Page.site_info) != null ? (ref1 = ref.content) != null ? (ref2 = ref1.settings) != null ? ref2.default_hubs : void 0 : void 0 : void 0) || {};
       for (var address in default_hubs) {
-        if (Page.user_hubs && Page.user_hubs[address]) {
+        if (PostRemoval.allowed(address) && Page.user_hubs && Page.user_hubs[address]) {
           target = address;
           break;
         }
@@ -713,7 +742,12 @@
         target = this.hub;
       }
       this.log("Announcing hub", hub_address, "on", target);
+      if (!PostRemoval.allowed(target)) { if (cb) cb({error: PostRemoval.message(PostRemoval.check(target))}); return; }
       return this.getData(target, (data) => {
+        if (!PostRemoval.allowed(hub_address) || !PostRemoval.allowed(target)) {
+          if (cb) cb({error: _("The hub is unavailable under the current removal policy.")});
+          return;
+        }
         if (data.hub_announce == null) {
           data.hub_announce = [];
         }
@@ -733,7 +767,7 @@
         if (!replaced) {
           data.hub_announce.push(row);
         }
-        return this.save(data, target, (res) => {
+        return this.save(data, target, null, (res) => {
           if (cb) {
             return cb(res);
           }
@@ -967,6 +1001,7 @@
     // Compact centered card for the Users page grid. list_type is the
     // UserList type ("active", "suggested", ...) the card is rendered in.
     renderGridCard(list_type) {
+      if (!PostRemoval.allowed(this.hub)) return null;
       var intro, link, meta, name, title;
       link = this.getLink();
       if (this.isFollowed()) {
@@ -1018,6 +1053,7 @@
     }
 
     renderList(type, list_type) {
+      if (!PostRemoval.allowed(this.hub)) return null;
       var followed, link, seeding, title;
       if (type == null) {
         type = "normal";

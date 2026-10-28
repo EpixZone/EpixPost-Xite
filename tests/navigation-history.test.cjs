@@ -29,6 +29,7 @@ function fixture() {
   context.window = context;
   vm.createContext(context);
   for (const file of ["lib/epixframe.js", "utils/Deferred.js", "utils/Text.js"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", file), "utf8"), context);
   }
   const source = fs.readFileSync(path.join(__dirname, "../js/EpixPost.js"), "utf8");

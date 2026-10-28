@@ -26,6 +26,7 @@ function fixture() {
     }
   });
   for (const file of ["lib/maquette", "utils/Autosize", "utils/Editable", "utils/Menu", "Post", "ComposerModal"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", file + ".js"), "utf8"), context);
     Object.assign(context, context.window);
   }

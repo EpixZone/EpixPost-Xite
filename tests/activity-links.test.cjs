@@ -33,6 +33,7 @@ function fixture() {
     },
   });
   for (const name of ["utils/Deferred", "utils/ItemList", "utils/QueryRows", "ActivityList", "PostList", "ContentThread"]) {
+    require("./helpers/removal-fixture.cjs")(context);
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", name + ".js"), "utf8"), context);
     context[name.split("/").pop()] = context.window[name.split("/").pop()];
   }

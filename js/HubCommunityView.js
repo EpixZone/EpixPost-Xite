@@ -60,7 +60,7 @@
     }
 
     canDownload(address) {
-      return this.allowing === address || (this.loaded && !this.error && !this.reasons(address).length);
+      return PostRemoval.allowed(address) && (this.allowing === address || (this.loaded && !this.error && !this.reasons(address).length));
     }
 
     handleFilter(e) {
@@ -91,6 +91,7 @@
 
     handleOverride(e) {
       var address = e.currentTarget.getAttribute("address");
+      if (!PostRemoval.notify(address)) return false;
       this.allowing = address;
       try {
         this.owner.downloadHub(address);
@@ -106,6 +107,7 @@
 
     handleReview(e) {
       var address = e.currentTarget.getAttribute("address");
+      if (!PostRemoval.notify(address)) { this.dialog = null; return false; }
       var own = HubCommunity.getOwnReview(address) || {};
       this.dialog = {
         address: address, identity: this.identity(), rating: own.rating || "", availability: own.availability || "",
@@ -141,6 +143,7 @@
     submit(clear) {
       var dialog = this.dialog;
       if (!dialog || this.saving || !this.canReview()) return false;
+      if (!PostRemoval.notify(dialog.address)) { this.dialog = null; return false; }
       if (dialog.identity !== this.identity()) {
         dialog.error = _("Your account changed. Close this panel and open it again before submitting.");
         Page.projector.scheduleRender();
@@ -190,6 +193,7 @@
     }
 
     renderSummary(address) {
+      if (!PostRemoval.allowed(address)) return PostRemoval.render(address, "div.hub-community");
       var s = HubCommunity.getSummary(address);
       var chips = [];
       chips.push(h("span.hub-badge", {key: "rating", classes: {"badge-warning": s.rating === "a" || s.rating === "m", "badge-unrated": !s.rating}}, s.rating ? _("Reported rating:") + " " + _(HubCommunity.RATINGS[s.rating]) : _("Unrated")));
@@ -235,6 +239,12 @@
     renderDialog() {
       var d = this.dialog;
       if (!d) return void 0;
+      if (!PostRemoval.allowed(d.address)) return h("div.composer-scrim.hub-review-scrim", {key: "hub-review"}, [
+        h("section.composer-modal.hub-review-modal", {role: "dialog", "aria-modal": "true"}, [
+          PostRemoval.render(d.address),
+          h("button.button.button-small", {type: "button", onclick: this.handleClose}, _("Close"))
+        ])
+      ]);
       var s = HubCommunity.getSummary(d.address);
       var canReview = this.canReview();
       return h("div.composer-scrim.hub-review-scrim", {key: "hub-review"}, [

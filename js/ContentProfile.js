@@ -100,6 +100,7 @@
     }
 
     copyProfileLink() {
+      if (!PostRemoval.notify(this.hub)) return;
       var link = "/" + Page.address + "/" + this.user.getLink();
       var notify = function() {
         Page.cmd("wrapperNotification", ["done", _("Link copied"), 3000]);
@@ -171,6 +172,7 @@
         }
       ], (res) => {
         var user;
+        if (!Array.isArray(res) || !res.length || !PostRemoval.allowedRow(res[0])) { cb(null); return; }
         user = new User();
         user.setRow(res[0]);
         return cb(user);
@@ -250,6 +252,10 @@
     }
 
     render() {
+      if (this.hub && !PostRemoval.allowed(this.hub)) {
+        if (!Page.on_loaded.resolved) Page.on_loaded.resolve();
+        return h("div#Content.center.content-profile", [PostRemoval.render(this.hub)]);
+      }
       var hub_address, hub_title, ref, ref1, ref2, user_dir;
       if (this.need_update) {
         this.log("Updating");
