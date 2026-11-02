@@ -37,7 +37,7 @@
         h("div.col-left", [
           h("div.users", [
             h("div.user.card.profile", [
-              this.user.renderAvatar(), h("a.name.link", {
+              this.user.renderAvatar(undefined, 80), h("a.name.link", {
                 href: this.user.getLink(),
                 onclick: Page.handleLinkClick
               }, this.user.getDisplayName()), h("div.intro-full", this.user.getDisplayIntro()), h("div.follow-container", [
@@ -331,7 +331,7 @@
                 onclick: Page.returnFalse,
                 onmousedown: this.handleProfileMenuClick
               }), this.menu.render(".menu-right.menu-profile"),
-              this.user.renderAvatar(), h("span.name.link", h("a", {
+              this.user.renderAvatar(undefined, 80), h("span.name.link", h("a", {
                 href: this.user.getLink(),
                 onclick: Page.handleLinkClick
               }, this.user.getDisplayName())), h("div.intro-full", {

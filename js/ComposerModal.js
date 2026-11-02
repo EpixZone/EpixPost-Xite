@@ -245,7 +245,7 @@
             }, _("Post"))
           ]),
           h("div.composer-body", [
-            Page.user && Page.user.hub ? Page.user.renderAvatar() : void 0,
+            Page.user && Page.user.hub ? Page.user.renderAvatar(undefined, 44) : void 0,
             h("div.composer-field", this.field_post.render())
           ]),
           this.image.base64uri ? h("div.image", {
