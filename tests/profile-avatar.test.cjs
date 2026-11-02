@@ -4,13 +4,16 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-test("xID profile cards reuse a thumbnail while hub-owned photos keep their own URL", async () => {
+test("xID profile cards reuse a thumbnail while hub-owned photos keep their own URL", { timeout: 3000 }, async () => {
   const calls = [], Page = {
     xid_profiles: {},
-    cmd(name, params, cb) { calls.push({ name, params, cb }); },
+    cmd(name, params, cb) { assert.equal(name, "wrapperAvatarThumbnailVersion"); cb(1); },
   };
+  const parent = { postMessage(message, target, [port]) {
+    calls.push({ name: message.cmd, params: message.params, cb(value) { port.postMessage(value); port.close(); } });
+  } };
   const context = vm.createContext({
-    window: { Page, parent: {} }, Page, URL, setTimeout, clearTimeout, LogMixin: {},
+    window: { Page, parent }, Page, URL, MessageChannel, setTimeout, clearTimeout, LogMixin: {},
     h: (selector, properties) => ({ selector, properties }), PostRemoval: { allowed: () => true },
   });
   function load(relative) {
@@ -23,18 +26,22 @@ test("xID profile cards reuse a thumbnail while hub-owned photos keep their own 
   user.xid_profile = { avatar: "https://images.example/xid.png" };
   const { properties } = user.renderAvatar({}, 80);
   assert.equal(properties.style, undefined);
-  const first = { style: {} }, second = { style: {} };
+  const first = { style: {} };
+  let painted;
+  const second = { style: { set backgroundImage(value) { painted(value); } } };
+  const secondPaint = new Promise(resolve => { painted = resolve; });
   properties.afterCreate(first, null, "a.avatar", properties);
   properties.afterUpdate(first, null, "a.avatar", properties);
   properties.afterCreate(second, null, "a.avatar", properties);
+  await new Promise(setImmediate);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].name, "wrapperGetAvatarThumbnail");
   assert.equal(calls[0].params.url, user.xid_profile.avatar);
   assert.equal(calls[0].params.size, 80);
   const thumbnail = "data:image/png;base64,QQ==";
   calls[0].cb({ thumbnail });
-  await new Promise(setImmediate);
-  for (const element of [first, second]) assert.equal(element.style.backgroundImage, 'url("' + thumbnail + '")');
+  assert.equal(await secondPaint, 'url("' + thumbnail + '")');
+  assert.equal(first.style.backgroundImage, 'url("' + thumbnail + '")');
 
   user.xid_profile = null;
   const hub = user.renderAvatar({}, 80);
