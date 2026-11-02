@@ -4,13 +4,15 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
+const wrapperOrigin = "https://post.epix";
+
 test("xID profile cards reuse a thumbnail while hub-owned photos keep their own URL", { timeout: 3000 }, async () => {
   const calls = [], Page = {
     xid_profiles: {},
-    cmd(name, params, cb) { assert.equal(name, "wrapperAvatarThumbnailVersion"); cb(1); },
+    cmd(name, params, cb) { assert.equal(name, "wrapperAvatarThumbnailVersion"); cb({ version: 1, origin: wrapperOrigin }); },
   };
   const parent = { postMessage(message, target, [port]) {
-    calls.push({ name: message.cmd, params: message.params, cb(value) { port.postMessage(value); port.close(); } });
+    calls.push({ name: message.cmd, params: message.params, target, cb(value) { port.postMessage(value); port.close(); } });
   } };
   const context = vm.createContext({
     window: { Page, parent }, Page, URL, MessageChannel, setTimeout, clearTimeout, LogMixin: {},
@@ -36,6 +38,7 @@ test("xID profile cards reuse a thumbnail while hub-owned photos keep their own 
   await new Promise(setImmediate);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].name, "wrapperGetAvatarThumbnail");
+  assert.equal(calls[0].target, wrapperOrigin);
   assert.equal(calls[0].params.url, user.xid_profile.avatar);
   assert.equal(calls[0].params.size, 80);
   const thumbnail = "data:image/png;base64,QQ==";
