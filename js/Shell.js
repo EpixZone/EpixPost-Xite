@@ -206,14 +206,11 @@
       ]);
     }
 
-    getAvatarStyle() {
-      var attrs = {};
-      var ref;
-      if ((ref = Page.user) != null ? ref.hub : void 0) {
-        Page.user.renderAvatar(attrs);  // fills attrs.style, no other side effect
-        return attrs.style;
-      }
-      return "background-image: url('img/default-avatar.svg')";
+    getAccountAvatarProps(size) {
+      const attrs = {};
+      if (Page.user && Page.user.hub) Page.user.renderAvatar(attrs, size);
+      else attrs.style = "background-image: url('img/default-avatar.svg')";
+      return attrs;
     }
 
     renderRailAccount() {
@@ -237,7 +234,7 @@
           onclick: Page.returnFalse,
           onmousedown: this.handleAccountRailClick
         }, [
-          h("span.avatar", {style: this.getAvatarStyle()}),
+          h("span.avatar", this.getAccountAvatarProps(34)),
           h("div.rail-account-info", [
             h("span.name", name),
             h("span.address", address)
@@ -274,13 +271,12 @@
         ),
         h("div.topbar-title", this.getTitle()),
         h("div.topbar-account", [
-          h("a.avatar", {
+          h("a.avatar", Object.assign(this.getAccountAvatarProps(36), {
             href: "#Account",
             title: _("Account"),
-            style: this.getAvatarStyle(),
             onclick: Page.returnFalse,
             onmousedown: this.handleAccountTopClick
-          }),
+          })),
           this.menu_account_top.render(".menu-topbar")
         ])
       ]);

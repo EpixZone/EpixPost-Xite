@@ -968,7 +968,7 @@
         this.user.renderAvatar({
           href: this.user.getLink(),
           onclick: Page.handleLinkClick
-        }),
+        }, 48),
         h("div.names", [
           h("div.nameline", [
             h("a.name.link", {

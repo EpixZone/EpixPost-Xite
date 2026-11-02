@@ -23,7 +23,7 @@
         return h("div.post-create.post.empty");
       } else if (user != null ? user.hub : void 0) {
         return h("div.post-create.post.fake",
-          h("div.user", user.renderAvatar()),
+          h("div.user", user.renderAvatar(undefined, 48)),
           h("a.fake-input", { href: "#Compose", onclick: this.handleOpenClick }, _("What's happening?")),
           h("a.icon.icon-image.link", { href: "#Image", title: _("Add image"), onclick: this.handleOpenClick })
         );

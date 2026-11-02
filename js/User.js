@@ -1,5 +1,9 @@
 (function() {
 
+  function bindXidAvatar(element, options, selector, props) {
+    EpixAvatar.bind(element, props.key, Number(props["data-avatar-size"]), { background: true });
+  }
+
   class User {
     constructor(row, item_list) {
       this.item_list = item_list;
@@ -346,7 +350,7 @@
       });
     }
 
-    renderAvatar(attrs) {
+    renderAvatar(attrs, size = 40) {
       if (this.hub && !PostRemoval.allowed(this.hub)) {
         // Callers may pass profile links and identifying titles. Clear those
         // attributes as well as the image when a previously visible hub changes.
@@ -361,9 +365,14 @@
       }
       avatar_url = ((ref = this.xid_profile) != null ? ref.avatar : void 0) || ((ref1 = Page.xid_profiles) != null ? (ref2 = ref1[this.auth_address]) != null ? ref2.avatar : void 0 : void 0);
       if (avatar_url) {
-        attrs.style = "background-image: url('" + avatar_url + "')";
+        // Each source owns its DOM node. A late thumbnail reply cannot paint
+        // a locally uploaded avatar or a removed hub's fallback.
+        attrs.key = avatar_url;
+        attrs["data-avatar-size"] = String(size);
+        attrs.afterCreate = bindXidAvatar;
+        attrs.afterUpdate = bindXidAvatar;
       } else if (((ref3 = this.row) != null ? ref3.avatar : void 0) && this.row.avatar.match(/^https?:\/\//)) {
-        attrs.style = "background-image: url('" + this.row.avatar + "')";
+        attrs.style = "background-image: url(" + JSON.stringify(this.row.avatar) + ")";
       } else if (this.isSeeding() && (((ref4 = this.row) != null ? ref4.avatar : void 0) === "png" || ((ref5 = this.row) != null ? ref5.avatar : void 0) === "jpg")) {
         attrs.style = "background-image: url('" + (this.getAvatarLink()) + "')";
       } else {
@@ -1039,7 +1048,7 @@
         }, "+"), this.renderAvatar({
           href: link,
           onclick: Page.handleLinkClick
-        }), h("a.name.link", {
+        }, 56), h("a.name.link", {
           href: link,
           onclick: Page.handleLinkClick
         }, name), meta ? h("div.meta", meta) : void 0,
