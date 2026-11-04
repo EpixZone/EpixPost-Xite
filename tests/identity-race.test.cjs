@@ -96,6 +96,23 @@ test("late profile queries cannot replace the selected account and boot callback
   assert.equal(calls.length, before, "stale lookup launches no profile work");
 });
 
+test("a profile refresh retains pending post edits only for the same identity", () => {
+  const { Page, info, row, take, resolveInfo, finishProfile } = fixture();
+  Page.site_info = info("alice");
+  Page.checkUser();
+  finishProfile("alice");
+  const edits = new Map([["hub-alice_1", {clock: 10, body: "Updated"}]]);
+  Page.saved_post_edits = edits;
+  const firstUser = Page.user;
+  Page.checkUser();
+  take("dbQuery").cb([row("alice")]);
+  resolveInfo();
+  assert.notEqual(Page.user, firstUser);
+  assert.equal(Page.saved_post_edits, edits);
+  Page.setSiteInfo(info("bob"));
+  assert.equal(Page.saved_post_edits, null);
+});
+
 test("a logout clears the active account before pending profile replies return", () => {
   const { Page, take, info, row } = fixture();
   let completed = 0;

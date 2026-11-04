@@ -154,16 +154,40 @@
     }
 
     handlePostSave(body, cb) {
-      // An edit is a new signed version of the same post_id (merge picks the
-      // causally-latest); it can never touch any other post.
-      return Page.user.editPost(this.row.post_id, { body: body }, cb);
+      // Keep the same map through refreshes of this identity. An account
+      // switch replaces it, including for writes still in flight.
+      if (!Page.saved_post_edits) Page.saved_post_edits = new Map();
+      const edits = Page.saved_post_edits;
+      return Page.user.editPost(this.row.post_id, { body: body }, (result, record) => {
+        if (result === "ok") {
+          const saved = edits.get(this.row.key);
+          if (!saved || record.clock > saved.clock) edits.set(this.row.key, record);
+        } else {
+          const detail = result && result.error ? " " + result.error : "";
+          Page.cmd("wrapperNotification", ["error", _("Could not save your edit.") + detail]);
+        }
+        cb(result === "ok");
+        Page.projector.scheduleRender();
+      }, this.row.site);
+    }
+
+    getEditedBody() {
+      // An unrelated refresh can still return the pre-edit row. Once the
+      // index reaches this write, its CRDT winner is authoritative again.
+      const edits = Page.saved_post_edits;
+      const saved = edits && edits.get(this.row.key);
+      if (saved) {
+        if ((this.row.clock || 0) < saved.clock) return saved.body;
+        edits.delete(this.row.key);
+      }
+      return this.row.body;
     }
 
     handlePostDelete(cb) {
       // A delete is a signed tombstone, NOT a splice: absence is not deletion
       // on the network, so only a signed tombstone hides the post. Blast radius
       // is this one post.
-      return Page.user.editPost(this.row.post_id, { deleted: true }, cb);
+      return Page.user.editPost(this.row.post_id, { deleted: true }, cb, this.row.site);
     }
 
     handleLikeClick(e) {
@@ -1068,7 +1092,7 @@
         style: this.menu && this.menu.visible ? "z-index: 1; position: relative" : ""
       }, [
         this.renderHeader(),
-        this.owned ? this.editable_body.render(this.row.body) : h("div.body", {
+        this.owned ? this.editable_body.render(this.getEditedBody()) : h("div.body", {
           classes: {
             maxheight: !thread_mode && !this.row.selected && ((ref = this.row.body) != null ? ref.length : void 0) > 3000
           },

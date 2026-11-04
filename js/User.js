@@ -275,17 +275,21 @@
     // Write ONE signed record to posts.json and publish. The node union-merges
     // the record into the on-disk set (so this never overwrites other posts)
     // and signs+bumps the user content.json, which propagates the merge.
-    savePost(record, site, cb) {
+    // Edits use after_write to display the locally accepted signed record.
+    // Existing create/delete callers wait for the publication attempt.
+    savePost(record, site, after_publish, after_write) {
       if (site == null) site = this.hub;
-      if (cb == null) cb = null;
       var container = { "record_format": "epix-orset-1", "post": [record] };
       return Page.cmd("fileWrite", [this.getPath(site) + "/posts.json", Text.fileEncode(container)], (res_write) => {
+        if (after_write) after_write(res_write, record);
+        if (res_write !== "ok") {
+          if (after_publish) after_publish(res_write);
+          return;
+        }
         Page.content.update();
         return Page.cmd("sitePublish", { "inner_path": this.getPath(site) + "/content.json" }, (res_pub) => {
           this.log("savePost", res_write, res_pub);
-          if (typeof cb === "function") {
-            cb(res_write);
-          }
+          if (after_publish) after_publish(res_write);
         });
       });
     }
@@ -294,9 +298,8 @@
     // and save it. The immutable post_id/nonce/date_added carry over; clock and
     // supersedes are derived from what is on disk so the merge orders it after
     // every version this device has seen.
-    editPost(post_id, changes, cb) {
-      if (cb == null) cb = null;
-      return this.getPosts(this.hub, (container) => {
+    editPost(post_id, changes, cb, site = this.hub) {
+      return this.getPosts(site, (container) => {
         var maxClock = 0, orig = null;
         container.post.forEach((r) => {
           if (r.post_id === post_id) {
@@ -308,18 +311,22 @@
             }
           }
         });
+        if (!orig) {
+          if (cb) cb({ error: _("Could not find this post on its hub.") });
+          return;
+        }
         var record = {
           "post_id": post_id,
-          "nonce": orig && orig.nonce ? orig.nonce : this.randNonce(),
+          "nonce": orig.nonce || this.randNonce(),
           "clock": Math.max(maxClock + 1, Date.now()),
           "supersedes": maxClock,
           "deleted": changes.deleted === true,
-          "body": changes.deleted ? "" : (changes.body != null ? changes.body : (orig ? orig.body : "")),
-          "date_added": orig ? orig.date_added : Time.timestamp()
+          "body": changes.deleted ? "" : (changes.body != null ? changes.body : orig.body),
+          "date_added": orig.date_added
         };
         if (!changes.deleted) {
           record["date_edited"] = Time.timestamp();
-          if (orig && orig.meta != null) {
+          if (orig.meta != null) {
             record["meta"] = orig.meta;
           }
         }
@@ -328,9 +335,8 @@
             if (cb) cb(signed);
             return;
           }
-          return this.savePost(signed, this.hub, (res) => {
-            if (cb) cb(res);
-          });
+          if (changes.deleted) return this.savePost(signed, site, cb);
+          return this.savePost(signed, site, null, cb);
         });
       });
     }
