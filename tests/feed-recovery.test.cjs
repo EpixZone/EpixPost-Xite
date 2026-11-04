@@ -240,6 +240,24 @@ test("unchanged post rows still update pagination after showing more posts", () 
   assert.ok(f.renders > previousRenders, "Pagination changes must update the rendered More control");
 });
 
+test("an equal-length edit updates the existing card once the index returns it", () => {
+  const f = fixture();
+  const list = loadedPost(f);
+  const card = list.posts[0];
+  const updated = () => finishPost(f, post("Existing note"), [comment()]);
+  list.update();
+  updated();
+  assert.equal(list.posts[0], card);
+  assert.equal(card.row.body, "Existing note");
+  const renders = f.renders;
+  list.update();
+  f.reply("posts", [post("Existing note")]);
+  f.reply("comments", [comment()]);
+  f.reply("commentLikes", [{ comment_uri: "bob.epix_2", likes: 2 }]);
+  f.reply("likes", [{ post_uri: "alice.epix_1", likes: 3 }]);
+  assert.equal(f.renders, renders);
+});
+
 test("a replacement post update cancels retries and ignores superseded database responses", () => {
   const f = fixture();
   const list = new f.context.PostList();

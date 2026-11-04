@@ -57,25 +57,9 @@
       queries.run([query, { post_uri: post_uris }], cb);
     }
 
-    // Cheap fingerprint of everything the rendered rows depend on: skip the
-    // sync + re-render when a background refresh returns identical content.
+    // Keep identical refreshes cheap without discarding equal-length edits.
     getContentKey(rows) {
-      var parts = [];
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var comments = row.comments || [];
-        var comments_size = 0;
-        for (var j = 0; j < comments.length; j++) {
-          comments_size += comments[j].body != null ? comments[j].body.length : 0;
-          comments_size += comments[j].reply_to != null ? 1 : 0;
-          comments_size += (comments[j].likes || 0) * 7919;
-        }
-        parts.push([
-          row.key, row.date_added, comments.length, comments_size,
-          row.likes || 0, row.body != null ? row.body.length : 0
-        ].join("."));
-      }
-      return parts.join("|");
+      return JSON.stringify(rows);
     }
 
     // The thread's explicit hub or the main feed's selected hub. The value
@@ -146,6 +130,9 @@
           var row = rows[j];
           row["key"] = row["site"] + "-" + row["directory"].replace("data/users/", "") + "_" + row["post_id"];
           row["post_uri"] = row["directory"].replace("data/users/", "") + "_" + row["post_id"];
+          // Keep key order stable whichever enrichment query finishes first.
+          row.comments = undefined;
+          row.likes = 0;
           post_uris.push(row["post_uri"]);
           var addr = row["directory"].replace("data/users/", "");
           if (addr) all_addresses.push(addr);

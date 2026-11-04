@@ -52,7 +52,7 @@ window.Page = {
   projector: maquette.createProjector(), user_hubs: { hub: {} }, local_storage: { settings: {} },
   user: { auth_address: "alice", hub: "hub", likes: {}, comment_likes: {},
     renderAvatar: () => h("div.avatar.letter", "A"),
-    editPost(id, changes, cb) { Object.assign(posts[id - 1].row, changes); cb(true); } },
+    editPost(id, changes, cb) { cb("ok", { body: changes.body, clock: Date.now() }); } },
   returnFalse: () => false, handleLinkClick: () => false,
   cmd(name, params, cb) {
     if (name === "feedListFollow") cb({});

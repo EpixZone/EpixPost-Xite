@@ -828,6 +828,7 @@
       if (this.user_identity !== identity) {
         this.user_identity_generation = (this.user_identity_generation || 0) + 1;
         this.user_identity = identity;
+        this.saved_post_edits = null;
         this.own_image_help_pending = {};
         useAnonymous();
         this.projector.scheduleRender();
