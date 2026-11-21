@@ -52,3 +52,22 @@ test("xID profile cards reuse a thumbnail while hub-owned photos keep their own 
   assert.equal(hub.properties.afterCreate, undefined);
   assert.match(hub.properties.style, /https:\/\/images\.example\/hub\.jpg/);
 });
+
+test("the rail and top bar show the account initial when no photo is available", () => {
+  const Page = {xid_profiles: {}, merged_sites: {}};
+  const context = vm.createContext({
+    window: {}, Page, LogMixin: {}, PostRemoval: {allowed: () => true},
+    _: text => text, Text: {toColor: () => "navy"},
+    h: (selector, attrs, text) => ({selector, attrs, text})
+  });
+  for (const name of ["User", "Shell"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../js", name + ".js"), "utf8"), context);
+  }
+  Page.user = new context.window.User({hub: "hub", auth_address: "alice.epix"});
+  const shell = Object.create(context.window.Shell.prototype);
+  for (const selector of ["a.avatar", "span.avatar"]) {
+    const avatar = shell.renderAccountAvatar(selector, 36);
+    assert.equal(avatar.selector, selector + ".letter");
+    assert.equal(avatar.text, "A");
+  }
+});

@@ -146,3 +146,20 @@ test("Back between feed aliases renders again and restores scrolling", () => {
   assert.ok(f.classes.has("loaded"), "the unchanged feed view must finish its loading cycle");
   assert.equal(f.context.pageYOffset, 120);
 });
+
+test("opening a comment preserves its position after the thread has rendered", () => {
+  const f = fixture();
+  f.context.pageYOffset = 1500;
+  const comment = { id: "alice.epix_2", getBoundingClientRect: () => ({ top: 250 }) };
+  f.page.content_thread.focus_uri = comment.id;
+  f.context.document.getElementById = id => {
+    assert.equal(id, comment.id);
+    return { getBoundingClientRect: () => ({ top: 850 }) };
+  };
+  f.context.scrollBy = (x, y) => { f.context.pageYOffset += y; };
+  f.page.navigate("?Post/hub/alice.epix/1/" + comment.id, comment);
+  assert.equal(f.rendered, "thread");
+  assert.equal(f.context.pageYOffset, 2100);
+  f.travel(-1);
+  assert.equal(f.context.pageYOffset, 1500);
+});

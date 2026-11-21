@@ -356,7 +356,7 @@
       });
     }
 
-    renderAvatar(attrs, size = 40) {
+    renderAvatar(attrs, size = 40, selector = "a.avatar") {
       if (this.hub && !PostRemoval.allowed(this.hub)) {
         // Callers may pass profile links and identifying titles. Clear those
         // attributes as well as the image when a previously visible hub changes.
@@ -387,9 +387,9 @@
         attrs.style = "background-color: " + Text.toColor(this.auth_address || "");
         var name = this.getDisplayName();
         var initial = name && name !== _("Unknown") ? name.charAt(0).toUpperCase() : "?";
-        return h("a.avatar.letter", attrs, initial);
+        return h(selector + ".letter", attrs, initial);
       }
-      return h("a.avatar", attrs);
+      return h(selector, attrs);
     }
 
     // cb fires once the file is written (the node has it, still unsigned);
@@ -418,7 +418,6 @@
       var inner_path = this.getPath(site) + "/data.json";
       return Page.cmd("fileWrite", [inner_path, Text.fileEncode(data)], (res_write) => {
         if (isCurrent && !isCurrent()) return;
-        Page.content.update();
         if (typeof cb === "function") {
           cb(res_write);
         }
@@ -432,6 +431,9 @@
           "inner_path": inner_path
         }, (res_sign) => {
           if (isCurrent && !isCurrent()) return;
+          // A write may temporarily disappear from the signed index until publication.
+          // Refresh now so the writing page reads the accepted profile and feed.
+          Page.content.update();
           this.log("Save result", res_write, res_sign);
           if (typeof cb_published === "function") {
             cb_published(res_sign);

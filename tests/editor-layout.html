@@ -106,7 +106,7 @@ async function openMenu() {
 function checkEditorButtons(editor, prefix) {
   const row = editor.querySelector(".editablebuttons");
   const rowBox = row.getBoundingClientRect();
-  for (const action of ["Delete", "Save"]) {
+  for (const action of ["Cancel", "Delete", "Save"]) {
     const button = row.querySelector('a[href="#' + action + '"]');
     const box = button.getBoundingClientRect();
     const range = document.createRange();
@@ -114,7 +114,7 @@ function checkEditorButtons(editor, prefix) {
     const labelBox = range.getBoundingClientRect();
     const centerOffset = Math.abs((box.top + box.bottom - labelBox.top - labelBox.bottom) / 2);
     const style = getComputedStyle(button);
-    check(prefix + ": " + action + " button stays compact", box.height >= 30 && box.height <= 34,
+    check(prefix + ": " + action + " button has a full touch target", box.height >= 44,
       "height=" + box.height + ", min-height=" + style.minHeight + ", coarse=" + matchMedia("(pointer: coarse)").matches + ", touch simulation=" + touchSimulation);
     check(prefix + ": " + action + " label is vertically centered", centerOffset <= 1.5,
       "center offset=" + centerOffset.toFixed(2) + "px");
