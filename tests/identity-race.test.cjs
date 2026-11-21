@@ -11,6 +11,7 @@ function fixture() {
     maquette: { h() {} },
     LogMixin: { log() {}, logStart() {}, logEnd() {} },
     Text: { fileEncode: JSON.stringify },
+    Time: { timestamp: () => 100 },
     _: (value) => value,
     Page: null,
   });
@@ -75,7 +76,7 @@ function fixture() {
     resolveXid(name);
     resolveInfo();
   };
-  return { Page, calls, take, info, row, resolveXid, resolveInfo, finishProfile };
+  return { Page, User: context.User, calls, take, info, row, resolveXid, resolveInfo, finishProfile };
 }
 
 test("late profile queries cannot replace the selected account and boot callbacks finish", () => {
@@ -322,4 +323,21 @@ test("profile bootstrap respects removed defaults and a chosen seeded hub", () =
     else assert.equal(calls.some(call => call.command === "fileGet"), false);
     assert.equal(calls.some(call => call.command === "mergerSiteAdd"), false);
   }
+});
+
+test("following updates the button on write and refreshes the signed feed after publication", () => {
+  const { Page, User, take } = fixture();
+  Page.user = new User({hub: "default-hub", auth_address: "alice.epix"});
+  const target = new User({hub: "default-hub", auth_address: "dice.epix"});
+  Page.needSite = () => {};
+  let refreshes = 0;
+  Page.content.update = () => { refreshes++; };
+  target.handleFollowClick();
+  take("fileGet").cb(JSON.stringify({follow: [], next_follow_id: 1}));
+  take("fileWrite").cb("ok");
+  assert.equal(target.submitting_follow, false);
+  assert.ok(target.isFollowed());
+  assert.equal(refreshes, 0);
+  take("sitePublish").cb("ok");
+  assert.equal(refreshes, 1);
 });

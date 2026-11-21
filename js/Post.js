@@ -134,25 +134,6 @@
       return false;
     }
 
-    // In-app navigation from a non-anchor element (comment body taps):
-    // mirrors Page.handleLinkClick's scroll/loading handling.
-    navigateTo(url) {
-      Page.history_state["scrollTop"] = window.pageYOffset;
-      Page.cmd("wrapperReplaceState", [Page.history_state, null]);
-      window.scroll(window.pageXOffset, 0);
-      Page.history_state["scrollTop"] = 0;
-      Page.on_loaded.resolved = false;
-      // resolve() CONSUMES the callback list, so markLoaded has to be put back
-      // or body.loaded never returns - and `body` is `overflow: hidden` until
-      // it does, so the page cannot be scrolled at all. EpixPost.navigate
-      // carries the same line; this path (tapping a comment to open its
-      // thread) was missing it, which is why a long thread reached this way
-      // was stuck.
-      Page.on_loaded.then(Page.markLoaded);
-      document.body.classList.remove("loaded");
-      Page.setUrl(url);
-    }
-
     handlePostSave(body, cb) {
       // Keep the same map through refreshes of this identity. An account
       // switch replaces it, including for writes still in flight.
@@ -596,7 +577,8 @@
       if (window.getSelection && String(window.getSelection())) {
         return true;
       }
-      this.navigateTo(this.getCommentLink(uri));
+      if (this.isThreadMode() && this.item_list.focus_uri === uri) return true;
+      Page.navigate(this.getCommentLink(uri), e.currentTarget.closest(".comment"));
       return false;
     }
 
@@ -984,6 +966,8 @@
     }
 
     renderHeader() {
+      // ItemList reuses the card when fresh post and author metadata arrives.
+      this.user.row = this.row;
       var handle = null;
       if (this.row.cert_user_id && !this.row.cert_user_id.match(/@xid(\.epix)?$/)) {
         handle = this.row.cert_user_id;

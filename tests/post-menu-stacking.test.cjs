@@ -175,3 +175,13 @@ test("dismissing a post menu outside its card restores the normal layer", () => 
   assert.equal(post.menu.visible, false);
   assert.equal(stackLevel(post), 0);
 });
+
+test("retained post cards render the author's current hub photo", () => {
+  const f = fixture();
+  f.context.Page.merged_sites = { hub: {} };
+  f.context.Time.since = f.context.Time.date = () => "now";
+  const card = f.makePost(1);
+  card.row = {...card.row, avatar: "https://example.org/new.jpg"};
+  const header = f.context.Post.prototype.renderHeader.call(card);
+  assert.match(header.children[0].properties.style, /new\.jpg/);
+});

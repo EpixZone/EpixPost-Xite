@@ -247,16 +247,26 @@
 
     // In-app navigation with the scroll/loaded bookkeeping links need; used
     // by handleLinkClick and by non-anchor click targets (e.g. user cards).
-    navigate(url) {
+    navigate(url, comment) {
       this.log("save scrollTop", window.pageYOffset);
       this.history_state["scrollTop"] = window.pageYOffset;
       this.cmd("wrapperReplaceState", [this.history_state, null]);
-      window.scroll(window.pageXOffset, 0);
+      const commentTop = comment && comment.getBoundingClientRect().top;
+      if (!comment) window.scroll(window.pageXOffset, 0);
       this.history_state["scrollTop"] = 0;
       this.on_loaded.resolved = false;
       // resolve() consumes the callback list, so re-arm it or body.loaded
       // (and scrolling) never comes back after an in-app navigation.
       this.on_loaded.then(this.markLoaded);
+      if (comment) {
+        // The thread is re-mounted and may wait for its post query. Anchor the
+        // selected comment after rendering it, at the position the reader tapped.
+        this.on_loaded.then(() => window.requestAnimationFrame(() => {
+          if (this.content !== this.content_thread || this.content.focus_uri !== comment.id) return;
+          const target = document.getElementById(comment.id);
+          if (target) window.scrollBy(0, target.getBoundingClientRect().top - commentTop);
+        }));
+      }
       document.body.classList.remove("loaded");
       this.setUrl(url);
       return false;
