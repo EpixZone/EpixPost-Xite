@@ -54,22 +54,6 @@
 			"indexes": ["CREATE INDEX hub_review_address ON hub_review(address)", "CREATE INDEX hub_review_author ON hub_review(json_id)"],
 			"schema_changed": 2
 		},
-		"json": {
-			"cols": [
-				["json_id", "INTEGER PRIMARY KEY AUTOINCREMENT"],
-				["site", "TEXT"],
-				["directory", "TEXT"],
-				["file_name", "TEXT"],
-				["cert_auth_type", "TEXT"],
-				["cert_user_id", "TEXT"],
-				["hub", "TEXT"],
-				["user_name", "TEXT"],
-				["intro", "TEXT"],
-				["avatar", "TEXT"]
-			],
-			"indexes": ["CREATE UNIQUE INDEX path ON json(directory, site, file_name)"],
-			"schema_changed": 4
-		},
 		"post": {
 			"cols": [
 				["post_id", "INTEGER"],
