@@ -37,7 +37,10 @@ function fixture() {
     .replace("window.Page.createProjector();", ""), context);
   const page = Object.create(context.EpixPost.prototype);
   const clone = value => JSON.parse(JSON.stringify(value));
+  // Object.create skips EpixFrame's constructor, so set the listener map it
+  // would create: _onMessage emits the matching on() event after each hook.
   Object.assign(page, {
+    _listeners: {},
     history_state: {}, params: { urls: [""] }, shell: {},
     on_loaded: new context.Deferred(), on_user_info: new context.Deferred(),
     log() {}, markLoaded() { classes.add("loaded"); },
